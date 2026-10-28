@@ -3,6 +3,7 @@ import type { NowPlaying } from '../playback/nowPlaying';
 import type { PressState } from '../playback/pipeline';
 import type { Playlist } from '../spotify/types';
 import { parsePlaylistId } from '../spotify/uri';
+import { Cover } from './Cover';
 
 export function PlayerBar({
   press,
@@ -11,6 +12,8 @@ export function PlayerBar({
   canControl,
   onToggle,
   onNext,
+  docked = false,
+  fade,
 }: {
   press: PressState;
   now: NowPlaying;
@@ -18,6 +21,10 @@ export function PlayerBar({
   canControl: boolean;
   onToggle: () => void;
   onNext: () => void;
+  /** The main window's bottom bar: larger, with the playlist's cover. */
+  docked?: boolean;
+  /** The soft-transition toggle, shown in the docked bar. */
+  fade?: { on: boolean; toggle: () => void };
 }) {
   const pressedName = press.status !== 'idle' && press.playlistId ? byId.get(press.playlistId)?.name : undefined;
   const short = (name: string | undefined) => (name ? describePlaylist(name).shortName : 'Spotify');
@@ -55,14 +62,29 @@ export function PlayerBar({
   }
 
   const isPlaying = !!now.state?.is_playing;
+  const observedId = parsePlaylistId(now.state?.context?.uri);
+  const coverOf =
+    (observedId && byId.get(observedId)) ||
+    (press.status !== 'idle' && press.playlistId ? byId.get(press.playlistId) : undefined);
   return (
-    <section className={`player-bar ${tone}`} aria-live="polite">
+    <section className={`player-bar ${tone}${docked ? ' docked' : ''}`} aria-live="polite">
+      {docked && <Cover images={coverOf?.images} className="now-cover" />}
       <span className="now">
         <span className="now-line">{line}</span>
         {sub && <span className="now-sub">{sub}</span>}
       </span>
       <span className="controls">
-        <button onClick={onToggle} disabled={!canControl}>
+        {fade && (
+          <button
+            className={`pill${fade.on ? ' on' : ''}`}
+            aria-pressed={fade.on}
+            onClick={fade.toggle}
+            title="Fade out, switch, fade in when you change playlist"
+          >
+            {fade.on ? '✓ Fade' : 'Fade off'}
+          </button>
+        )}
+        <button className={docked ? 'primary' : undefined} onClick={onToggle} disabled={!canControl}>
           {isPlaying ? 'Pause' : 'Resume'}
         </button>
         <button onClick={onNext} disabled={!canControl || !now.state}>

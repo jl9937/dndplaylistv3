@@ -60,6 +60,12 @@ export async function transfer(deviceId: string, opts: Opts = {}): Promise<void>
   await request('PUT', '/me/player', { ...opts, body: { device_ids: [deviceId], play: false } });
 }
 
+/** Device volume, 0–100. Spotify rate-limits this; the fade uses only a few steps. */
+export async function setVolume(deviceId: string, percent: number, opts: Opts = {}): Promise<void> {
+  const v = Math.max(0, Math.min(100, Math.round(percent)));
+  await request('PUT', `/me/player/volume?volume_percent=${v}&${q(deviceId)}`, opts);
+}
+
 export async function setShuffle(deviceId: string, on: boolean, opts: Opts = {}): Promise<void> {
   await request('PUT', `/me/player/shuffle?state=${on}&${q(deviceId)}`, opts);
 }

@@ -21,6 +21,8 @@ function fakeDevice() {
     mode: 'normal' as 'normal' | 'nothing' | 'stalled',
     shuffle: false,
     repeat: 'off' as Observation['repeat'],
+    volume: 80 as number | null,
+    volumes: [] as number[],
     plays,
     start(playlistId: string) {
       current = { playlistId, progress: 0, playing: true };
@@ -52,11 +54,17 @@ function fakeDevice() {
         trackId: 't1',
         shuffle: fake.shuffle,
         repeat: fake.repeat,
+        volume: fake.volume,
       };
     }),
     wake: vi.fn(async () => {}),
     setShuffle: vi.fn(async () => {}),
     setRepeatContext: vi.fn(async () => {}),
+    setVolume: vi.fn(async (_id: string, v: number) => {
+      fake.volume = Math.round(v);
+      fake.volumes.push(Math.round(v));
+    }),
+    fadeSteps: 3,
   };
   return { device, fake };
 }
@@ -310,6 +318,93 @@ describe('play pipeline', () => {
     pipeline.reset();
     await first;
     expect(pipeline.getState().status).toBe('idle');
+  });
+});
+
+describe('soft transitions', () => {
+  const fading = () => createPipeline({ fadeEnabled: () => true });
+
+  it('fades out what is playing, switches, then fades back to the same volume', async () => {
+    const { device, fake } = fakeDevice();
+    fake.start('OLD');
+    const order: string[] = [];
+    vi.mocked(device.setVolume!).mockImplementation(async (_id, v) => {
+      fake.volume = Math.round(v);
+      fake.volumes.push(Math.round(v));
+      order.push(`vol ${Math.round(v)}`);
+    });
+    const realPlay = device.sendPlay;
+    device.sendPlay = vi.fn(async (id, req, signal) => {
+      order.push('play');
+      return realPlay(id, req, signal);
+    });
+    const p = fading().press({ id: 'NEW' }, device);
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect((await p).status).toBe('playing');
+    expect(order).toEqual(['vol 53', 'vol 27', 'vol 0', 'play', 'vol 27', 'vol 53', 'vol 80', 'vol 80']);
+    expect(fake.volume).toBe(80);
+  });
+
+  it('switches with no fade when nothing is playing', async () => {
+    const { device } = fakeDevice();
+    const p = fading().press({ id: 'NEW' }, device);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await p).status).toBe('playing');
+    expect(device.setVolume).not.toHaveBeenCalled();
+  });
+
+  it('is off when disabled, and for devices without volume control', async () => {
+    const { device, fake } = fakeDevice();
+    fake.start('OLD');
+    const p = createPipeline({ fadeEnabled: () => false }).press({ id: 'NEW' }, device);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await p;
+    expect(device.setVolume).not.toHaveBeenCalled();
+
+    const other = fakeDevice();
+    other.fake.start('OLD');
+    other.device.setVolume = undefined;
+    const q = fading().press({ id: 'NEW' }, other.device);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await q).status).toBe('playing');
+  });
+
+  it('restores the volume when the press fails', async () => {
+    const { device, fake } = fakeDevice();
+    fake.start('OLD');
+    device.sendPlay = vi.fn(async () => {
+      throw new SpotifyError('premium', 403, 'Spotify Premium required.');
+    });
+    const p = fading().press({ id: 'NEW' }, device);
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect((await p).status).toBe('failed');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fake.volume).toBe(80);
+  });
+
+  it('a press during a fade fades back to the original volume, not the faded one', async () => {
+    const { device, fake } = fakeDevice();
+    fake.start('OLD');
+    const pipeline = fading();
+    const first = pipeline.press({ id: 'A' }, device);
+    await vi.advanceTimersByTimeAsync(500); // mid fade-out
+    expect(fake.volume).toBeLessThan(80);
+    const second = pipeline.press({ id: 'B' }, device);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await Promise.all([first, second]);
+    expect(pipeline.getState()).toMatchObject({ status: 'playing', playlistId: 'B' });
+    expect(fake.volume).toBe(80);
+  });
+
+  it('pausing mid-fade restores the volume', async () => {
+    const { device, fake } = fakeDevice();
+    fake.start('OLD');
+    const pipeline = fading();
+    void pipeline.press({ id: 'A' }, device);
+    await vi.advanceTimersByTimeAsync(500);
+    void pipeline.pause(device);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fake.volume).toBe(80);
   });
 });
 

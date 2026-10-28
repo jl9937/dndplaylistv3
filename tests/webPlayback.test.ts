@@ -32,6 +32,13 @@ class FakePlayer implements SdkPlayer {
   }
   async activateElement() {}
   async resume() {}
+  volume = 0.8;
+  async getVolume() {
+    return this.volume;
+  }
+  async setVolume(v: number) {
+    this.volume = v;
+  }
 }
 
 const sdk: SdkNamespace = { Player: FakePlayer as unknown as SdkNamespace['Player'] };

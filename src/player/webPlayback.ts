@@ -36,6 +36,8 @@ export interface SdkPlayer {
   getCurrentState(): Promise<SdkState | null>;
   activateElement(): Promise<void>;
   resume(): Promise<void>;
+  getVolume(): Promise<number>;
+  setVolume(volume: number): Promise<void>;
 }
 
 export interface SdkNamespace {
@@ -349,6 +351,7 @@ export function createWebPlayback(deps: WebPlaybackDeps) {
   async function observe(): Promise<Observation | null> {
     const s = await player?.getCurrentState();
     if (!s || !deviceId) return null;
+    const volume = await player!.getVolume().catch(() => null);
     const track = s.track_window.current_track;
     const uri = s.context?.uri ?? null;
     const m = uri ? /playlist:([A-Za-z0-9]+)$/.exec(uri) : null;
@@ -361,6 +364,7 @@ export function createWebPlayback(deps: WebPlaybackDeps) {
       trackId: track?.id ?? null,
       shuffle: s.shuffle,
       repeat: s.repeat_mode === 1 ? 'context' : s.repeat_mode === 2 ? 'track' : 'off',
+      volume: volume === null ? null : Math.round(volume * 100),
     };
   }
 
@@ -379,6 +383,10 @@ export function createWebPlayback(deps: WebPlaybackDeps) {
       } catch {
         /* no player yet */
       }
+    },
+    /** Local and instant, so fades can be smooth (Milestone 3). */
+    async setVolume(percent: number) {
+      await player?.setVolume(Math.max(0, Math.min(1, percent / 100)));
     },
     /** The "Click to enable audio" button. */
     async enableAudio() {

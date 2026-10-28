@@ -951,3 +951,105 @@ button.icon {
 .sdk-line.failed {
   color: var(--bad);
 }
+
+/* ---------- milestone 3: tag pills ---------- */
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  align-items: center;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  min-height: 36px;
+  color: var(--muted);
+}
+
+.pill .count {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.pill.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a140c;
+  font-weight: 600;
+}
+
+/* ---------- milestone 3: now playing docked at the bottom ---------- */
+
+.app {
+  padding-bottom: 7rem; /* room for the dock */
+}
+
+.player-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, #2a1f14 0%, #1c150f 100%);
+  border-top: 2px solid var(--accent);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+}
+
+.player-bar.docked {
+  position: static;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  gap: 1rem;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.player-bar.docked .now-line {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.player-bar.docked .now-sub {
+  font-size: 0.9rem;
+}
+
+.player-bar.docked .controls button {
+  min-height: 44px;
+  min-width: 5.5rem;
+  font-size: 1rem;
+}
+
+.now-cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--panel-2);
+  flex: none;
+  box-shadow: 0 0 0 2px var(--line);
+}
+
+.player-bar.docked.playing .now-cover {
+  box-shadow: 0 0 0 2px var(--ok);
+}
+
+.player-bar.docked.failed .now-line {
+  color: var(--bad);
+}
+
+/* The log panel sits above the dock. */
+.debug {
+  bottom: 82px;
+}
+
+/* The Fade toggle is a setting, not an action: outlined, so it never looks like Pause. */
+.player-bar .controls .pill.on {
+  background: none;
+  color: var(--accent);
+  border-color: var(--accent);
+}

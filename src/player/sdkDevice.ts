@@ -24,5 +24,7 @@ export function createSdkDevice(wp: WebPlayback): PlayerDevice {
     wake: (_id, signal) => wp.recover(signal),
     setShuffle: (id, on, signal) => api.setShuffle(id, on, { signal }),
     setRepeatContext: (id, signal) => api.setRepeat(id, 'context', { signal }),
+    setVolume: (_id, percent) => wp.setVolume(percent),
+    fadeSteps: 12,
   };
 }

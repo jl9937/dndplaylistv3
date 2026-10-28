@@ -5,7 +5,7 @@ import { RELOGIN_WARN_DAYS } from './config';
 import { loadLibrary, resetLibrary } from './library/libraryStore';
 import { deviceStore, loadDevicePref, saveDevicePref, type DevicePref } from './playback/devices';
 import { displayStatus, refreshNowPlaying, setFloating, startNowPlaying } from './playback/nowPlaying';
-import { createRemoteDevice, pipeline } from './playback/pipeline';
+import { createRemoteDevice, FADE_PREF, pipeline } from './playback/pipeline';
 import { boardOrder, currentSet, hasPlaylist, moveScene, moveSection, removeScene, syncNames, togglePlaylist } from './sets/sets';
 import { updateSets } from './sets/setsStore';
 import { describePlaylist } from './library/tags';
@@ -65,6 +65,11 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   };
   const deviceSelect = useRef<HTMLSelectElement>(null);
   const [compact, setCompact] = useState(false);
+  const [fadeOn, setFadeOn] = useState(() => read<boolean>(FADE_PREF) ?? true);
+  const toggleFade = () => {
+    write(FADE_PREF, !fadeOn);
+    setFadeOn(!fadeOn);
+  };
   const [pip, setPip] = useState<Window | null>(null);
 
   const set = currentSet(sets);
@@ -300,7 +305,6 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
         <ReadyCheck playlists={playlists} pref={pref} onClose={() => setShowReady(false)} />
       )}
 
-      <PlayerBar press={press} now={now} byId={byId} canControl={!!device} onToggle={togglePause} onNext={next} />
 
       {route === 'board' && library.status === 'ok' ? (
         <Board
@@ -330,6 +334,9 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       {showPalette && (
         <Palette playlists={visible} inSet={inSet} onPlay={play} onToggleSet={toggleSet} onClose={() => setShowPalette(false)} />
       )}
+      <div className="player-dock">
+        <PlayerBar docked fade={{ on: fadeOn, toggle: toggleFade }} press={press} now={now} byId={byId} canControl={!!device} onToggle={togglePause} onNext={next} />
+      </div>
       {floating}
     </div>
   );

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
 import { describePlaylist, groupByTag } from '../library/tags';
 import { trackCount, type Playlist } from '../spotify/types';
+import { read, write } from '../storage';
 import { Cover } from './Cover';
 import { StatusBadge, type ItemStatus } from './Status';
 
@@ -32,18 +33,37 @@ export function Library({
   onChooseDevice: () => void;
 }) {
   const [filter, setFilter] = useState('');
-  const { groups, untagged } = useMemo(() => {
-    if (library.status !== 'ok') return { groups: [], untagged: 0 };
-    const f = filter.trim().toLocaleLowerCase();
+  // Tag pills: toggles that narrow the Library to some tags. None selected shows all.
+  const [picked, setPickedState] = useState<Set<string>>(() => new Set(read<string[]>('prefs.libraryTags') ?? []));
+  const setPicked = (fn: (prev: Set<string>) => Set<string>) =>
+    setPickedState((prev) => {
+      const next = fn(prev);
+      write('prefs.libraryTags', [...next]);
+      return next;
+    });
+  const toggle = (key: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const { groups, pills, untagged } = useMemo(() => {
+    if (library.status !== 'ok') return { groups: [], pills: [], untagged: 0 };
     const shown = library.playlists.filter((p) => !describePlaylist(p.name).hidden);
-    const matching = f ? shown.filter((p) => p.name.toLocaleLowerCase().includes(f)) : shown;
-    const all = groupByTag(matching, (p) => p.name);
-    const untaggedGroup = all.find((g) => g.key === '');
-    return {
-      groups: showUntagged ? all : all.filter((g) => g.key !== ''),
-      untagged: untaggedGroup?.items.length ?? 0,
-    };
-  }, [library, filter, showUntagged]);
+    const all = groupByTag(shown, (p) => p.name);
+    const untaggedCount = all.find((g) => g.key === '')?.items.length ?? 0;
+    const pillGroups = showUntagged ? all : all.filter((g) => g.key !== '');
+    const f = filter.trim().toLocaleLowerCase();
+    const active = pillGroups.some((g) => picked.has(g.key));
+    const visible = pillGroups
+      .filter((g) => !active || picked.has(g.key))
+      .map((g) => ({ ...g, items: f ? g.items.filter((p) => p.name.toLocaleLowerCase().includes(f)) : g.items }))
+      .filter((g) => g.items.length > 0);
+    return { groups: visible, pills: pillGroups, untagged: untaggedCount };
+  }, [library, filter, showUntagged, picked]);
+  const anyPicked = pills.some((g) => picked.has(g.key));
 
   if (library.status === 'loading') return <p className="state">Loading playlists…</p>;
   if (library.status === 'error') {
@@ -64,6 +84,25 @@ export function Library({
         onChange={(e) => setFilter(e.target.value)}
         aria-label="Filter playlists"
       />
+      {pills.length > 1 && (
+        <div className="pills" role="group" aria-label="Show only these tags">
+          {pills.map((g) => (
+            <button
+              key={g.key || 'untagged'}
+              className={`pill${picked.has(g.key) ? ' on' : ''}`}
+              aria-pressed={picked.has(g.key)}
+              onClick={() => toggle(g.key)}
+            >
+              {g.label} <span className="count">{g.items.length}</span>
+            </button>
+          ))}
+          {anyPicked && (
+            <button className="link" onClick={() => setPicked(() => new Set())}>
+              Show all
+            </button>
+          )}
+        </div>
+      )}
       {library.refreshError && (
         <p className="hint subtle">
           Showing saved playlists; refreshing failed ({library.refreshError}). <button className="link" onClick={onRetry}>Retry</button>

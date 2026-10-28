@@ -64,6 +64,16 @@ describe('fallback device', () => {
     expect(browser.resolve).not.toHaveBeenCalled();
   });
 
+  it('passes volume control through to the active device (soft transitions)', async () => {
+    const mac = { ...device('MacBook Pro', async () => 'mac'), setVolume: vi.fn(async () => {}), fadeSteps: 3 };
+    const browser = { ...device('This browser', async () => 'sdk'), setVolume: vi.fn(async () => {}), fadeSteps: 12 };
+    const d = createFallbackDevice(mac, browser, () => true, vi.fn());
+    await d.resolve(signal);
+    await d.setVolume!('mac', 40, signal);
+    expect(mac.setVolume).toHaveBeenCalledWith('mac', 40, signal);
+    expect(d.fadeSteps).toBe(3);
+  });
+
   it('activates the in-browser player on the click, in case it falls back later', () => {
     const mac = device('MacBook Pro', async () => 'mac');
     const browser = device('This browser', async () => 'sdk');

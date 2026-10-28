@@ -12,6 +12,7 @@ Status: Milestones 1, 2a, 2b and 1b built and deployed. The Milestone 1 soak tes
 - [docs/milestone-1b.md](docs/milestone-1b.md): Milestone 1b (in-browser player as automatic fallback)
 - [docs/milestone-2a.md](docs/milestone-2a.md): Milestone 2a (Board, session sets, tags, quick switch)
 - [docs/milestone-2b.md](docs/milestone-2b.md): Milestone 2b (compact strip, always-on-top floating strip)
+- [docs/milestone-3.md](docs/milestone-3.md): Milestone 3 (soft transitions, tag pills, docked player)
 
 ## Stack
 

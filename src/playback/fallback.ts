@@ -39,5 +39,13 @@ export function createFallbackDevice(
     wake: (...a) => active.wake(...a),
     setShuffle: (...a) => active.setShuffle(...a),
     setRepeatContext: (...a) => active.setRepeatContext(...a),
+    // Soft transitions: only if the active device supports volume control.
+    get setVolume() {
+      const d = active;
+      return d.setVolume ? (id: string, percent: number, signal: AbortSignal) => d.setVolume!(id, percent, signal) : undefined;
+    },
+    get fadeSteps() {
+      return active.fadeSteps;
+    },
   };
 }

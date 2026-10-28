@@ -8,6 +8,7 @@ import { SpotifyError } from '../spotify/client';
 import type { PlaybackState } from '../spotify/types';
 import { parsePlaylistId, playlistUri } from '../spotify/uri';
 import { raceAbort, sleep } from '../sleep';
+import { read } from '../storage';
 import { matchDevice, type DevicePref, type DeviceStore } from './devices';
 
 export const DEADLINE_MS = 12_000;
@@ -19,6 +20,9 @@ export const RETRY_DELAYS_MS = [250, 750];
 export const WAKE_SETTLE_MS = 1_000;
 export const LATE_WATCH_MS = 10_000;
 export const LATE_POLL_MS = 2_000;
+/** Soft transitions (Milestone 3): fade out, switch, fade in. */
+export const FADE_OUT_MS = 1_200;
+export const FADE_IN_MS = 1_500;
 
 // ---------- the device interface (1b adds an SDK implementation) ----------
 
@@ -31,6 +35,8 @@ export interface Observation {
   trackId: string | null;
   shuffle: boolean;
   repeat: 'off' | 'track' | 'context';
+  /** 0–100, or null if the device doesn't report or support volume. */
+  volume: number | null;
 }
 
 export interface PlayerDevice {
@@ -50,6 +56,10 @@ export interface PlayerDevice {
   wake(id: string, signal: AbortSignal): Promise<void>;
   setShuffle(id: string, on: boolean, signal: AbortSignal): Promise<void>;
   setRepeatContext(id: string, signal: AbortSignal): Promise<void>;
+  /** For soft transitions. Absent: the device switches with a hard cut. */
+  setVolume?(id: string, percent: number, signal: AbortSignal): Promise<void>;
+  /** How many volume steps a fade uses: few for remote devices (rate-limited), many locally. */
+  readonly fadeSteps?: number;
 }
 
 export class DeviceMissingError extends Error {
@@ -70,6 +80,7 @@ export function toObservation(s: PlaybackState | null): Observation | null {
     trackId: s.item?.id ?? null,
     shuffle: s.shuffle_state,
     repeat: s.repeat_state,
+    volume: s.device?.volume_percent ?? null,
   };
 }
 
@@ -91,6 +102,8 @@ export function createRemoteDevice(pref: DevicePref, store: DeviceStore): Player
     wake: (id, signal) => api.transfer(id, { signal }),
     setShuffle: (id, on, signal) => api.setShuffle(id, on, { signal }),
     setRepeatContext: (id, signal) => api.setRepeat(id, 'context', { signal }),
+    setVolume: (id, percent, signal) => api.setVolume(id, percent, { signal }),
+    fadeSteps: 3,
   };
 }
 
@@ -113,6 +126,8 @@ export function guardDevice(d: PlayerDevice): PlayerDevice {
     wake: (id, signal) => raceAbort(d.wake(id, signal), signal),
     setShuffle: (id, on, signal) => raceAbort(d.setShuffle(id, on, signal), signal),
     setRepeatContext: (id, signal) => raceAbort(d.setRepeatContext(id, signal), signal),
+    setVolume: d.setVolume ? (id, percent, signal) => raceAbort(d.setVolume!(id, percent, signal), signal) : undefined,
+    fadeSteps: d.fadeSteps,
   };
 }
 
@@ -142,10 +157,18 @@ class DeadlineExceeded extends Error {}
 
 export interface PipelineOptions {
   random?: () => number;
+  /** Read on every press, so the setting applies at once. */
+  fadeEnabled?: () => boolean;
 }
 
 export function createPipeline(opts: PipelineOptions = {}) {
   const random = opts.random ?? Math.random;
+  const fadeEnabled = opts.fadeEnabled ?? (() => false);
+  /**
+   * The volume to come back to, while a fade has the device quiet. Survives a superseding
+   * press (it fades in to the same target), and every failure path restores it.
+   */
+  let transition: { deviceId: string; target: number; device: PlayerDevice } | null = null;
   let seq = 0;
   let controller: AbortController | null = null;
   let state: PressState = { status: 'idle' };
@@ -205,6 +228,48 @@ export function createPipeline(opts: PipelineOptions = {}) {
       }
       prev = obs;
     }
+  }
+
+  async function ramp(device: PlayerDevice, id: string, from: number, to: number, ms: number, signal: AbortSignal) {
+    const steps = Math.max(1, device.fadeSteps ?? 3);
+    for (let i = 1; i <= steps; i++) {
+      await device.setVolume!(id, from + ((to - from) * i) / steps, signal);
+      if (i < steps) await sleep(ms / steps, signal);
+    }
+  }
+
+  /** Put the volume back now (failure, pause, next). Fire-and-forget with its own timeout. */
+  function restoreVolume(why: string) {
+    const t = transition;
+    transition = null;
+    if (!t?.device.setVolume) return;
+    log('pipeline', `restoring volume to ${t.target} (${why})`);
+    void t.device.setVolume(t.deviceId, t.target, AbortSignal.timeout(DEADLINE_MS)).catch((e: unknown) =>
+      log('pipeline', `could not restore volume: ${e instanceof Error ? e.message : e}`),
+    );
+  }
+
+  /** Before switching: fade out whatever is playing on this device. */
+  async function fadeOut(device: PlayerDevice, id: string, run: ReturnType<typeof begin>, step: (s: string) => void) {
+    if (!fadeEnabled() || !device.setVolume) return;
+    const before = await device.observe(run.signal).catch(() => null);
+    const here = before && before.deviceId === id ? before : null;
+    const target = transition?.deviceId === id ? transition.target : here?.volume ?? null;
+    if (target === null || target <= 0) return;
+    transition = { deviceId: id, target, device };
+    if (!here?.isPlaying || here.volume === null || here.volume <= 0) return; // already quiet
+    step('Fading out…');
+    await ramp(device, id, here.volume, 0, FADE_OUT_MS, run.signal);
+  }
+
+  /** After confirmation: fade back up to the volume before the switch. */
+  async function fadeIn(device: PlayerDevice, id: string, signal: AbortSignal) {
+    const t = transition;
+    if (!t || t.deviceId !== id || !device.setVolume) return;
+    await ramp(device, id, 0, t.target, FADE_IN_MS, signal);
+    // Spotify doesn't promise command order: assert the final volume once more.
+    await device.setVolume(id, t.target, signal);
+    if (transition === t) transition = null;
   }
 
   /** Step 8 (D14, D15): shuffle on, repeat the playlist. Only after confirmation. */
@@ -299,6 +364,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
     try {
       step('Finding device…');
       id = await device.resolve(run.signal);
+      await fadeOut(device, id, run, step);
 
       const offsetPosition =
         playlist.total && playlist.total > 0 ? Math.floor(random() * playlist.total) : undefined;
@@ -331,17 +397,23 @@ export function createPipeline(opts: PipelineOptions = {}) {
       if (result.ok) {
         log('pipeline', `#${run.mine} playing`);
         set({ status: 'playing', seq: run.mine, playlistId, deviceLabel: device.label });
+        await fadeIn(device, id, run.signal).catch((e: unknown) => {
+          if (run.signal.aborted) throw e;
+          restoreVolume('fade-in failed');
+        });
         await ensureMode(device, id, result.obs, run.signal);
         return state;
       }
       const reason = unconfirmedReason(device.label, playlistId, id, result.last);
+      restoreVolume('press failed');
       log('pipeline', `#${run.mine} failed: ${reason}`);
       set({ status: 'failed', seq: run.mine, playlistId, reason, deviceMissing: false });
       lateWatch(run, device, id, playlistId);
       return state;
     } catch (e) {
       const cause = run.signal.aborted ? run.signal.reason : e;
-      if (cause instanceof Superseded || !run.current()) return state;
+      if (cause instanceof Superseded || !run.current()) return state; // the next press owns the fade
+      restoreVolume('press failed');
       const { reason, deviceMissing } = failureReason(cause, device.label);
       log('pipeline', `#${run.mine} failed: ${reason}`);
       set({ status: 'failed', seq: run.mine, playlistId, reason, deviceMissing });
@@ -359,6 +431,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
 
   async function pause(rawDevice: PlayerDevice): Promise<PressState> {
     const run = begin();
+    restoreVolume('paused mid-fade');
     const device = guardDevice(rawDevice);
     const playlistId = currentPlaylistId();
     try {
@@ -387,6 +460,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
   async function resume(rawDevice: PlayerDevice): Promise<PressState> {
     rawDevice.prepareGesture?.();
     const run = begin();
+    restoreVolume('resumed mid-fade');
     const device = guardDevice(rawDevice);
     const playlistId = currentPlaylistId();
     try {
@@ -427,6 +501,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
    */
   async function next(rawDevice: PlayerDevice): Promise<string | null> {
     const device = guardDevice(rawDevice);
+    restoreVolume('skipped mid-fade');
     const signal = AbortSignal.timeout(DEADLINE_MS);
     try {
       await device.sendNext(await device.resolve(signal), signal);
@@ -453,6 +528,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
     subscribe,
     /** Drop any run in progress (logout). */
     reset() {
+      restoreVolume('reset');
       controller?.abort(new Superseded());
       seq++;
       set({ status: 'idle' });
@@ -462,4 +538,6 @@ export function createPipeline(opts: PipelineOptions = {}) {
 
 export type Pipeline = ReturnType<typeof createPipeline>;
 
-export const pipeline = createPipeline();
+export const FADE_PREF = 'prefs.fade';
+
+export const pipeline = createPipeline({ fadeEnabled: () => read<boolean>(FADE_PREF) ?? true });
