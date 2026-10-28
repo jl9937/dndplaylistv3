@@ -244,6 +244,38 @@ describe('play pipeline', () => {
     expect(await p).toMatchObject({ status: 'failed', reason: "Spotify didn't respond within 12 s." });
   });
 
+  // Seen live 2026-10-28: a press stuck on "Finding device…". Calls that ignore the
+  // signal (a shared in-flight request, a lock wait) must not outlast the deadline.
+  const never = () => new Promise<never>(() => {});
+
+  it('fails at the deadline even when finding the device hangs and ignores the signal', async () => {
+    const { device } = fakeDevice();
+    device.resolve = vi.fn(never);
+    const p = createPipeline().press({ id: 'PL1' }, device);
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect(await p).toMatchObject({ status: 'failed', reason: "Spotify didn't respond within 12 s." });
+  });
+
+  it('fails at the deadline when observing hangs and ignores the signal', async () => {
+    const { device } = fakeDevice();
+    device.observe = vi.fn(never);
+    const p = createPipeline().press({ id: 'PL1' }, device);
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect((await p).status).toBe('failed');
+  });
+
+  it('pause and resume also fail at the deadline instead of hanging', async () => {
+    const { device } = fakeDevice();
+    device.resolve = vi.fn(never);
+    const pipeline = createPipeline();
+    const paused = pipeline.pause(device);
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect((await paused).status).toBe('failed');
+    const resumed = pipeline.resume(device);
+    await vi.advanceTimersByTimeAsync(12_100);
+    expect((await resumed).status).toBe('failed');
+  });
+
   it('latest press wins: an older press can never reach Playing', async () => {
     const { device } = fakeDevice();
     const realPlay = device.sendPlay;

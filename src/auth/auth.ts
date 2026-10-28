@@ -44,6 +44,9 @@ export class ReloginError extends Error {
 
 const TOKENS_KEY = 'auth.tokens';
 const PENDING_KEY = 'auth.pending';
+/** Token requests and the cross-window lock wait must never hang (a hung refresh blocks every request). */
+const TOKEN_TIMEOUT_MS = 10_000;
+const LOCK_WAIT_MS = 15_000;
 /** Refresh this long before expiry, so a token never dies mid-request. */
 const EXPIRY_MARGIN_MS = 60_000;
 
@@ -171,10 +174,12 @@ async function tokenRequest(body: URLSearchParams, what: string): Promise<TokenR
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
+      signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
-  } catch {
-    log('auth', `${what}: network error`);
-    throw new Error('No connection to Spotify.');
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === 'TimeoutError';
+    log('auth', `${what}: ${timedOut ? 'timed out' : 'network error'}`);
+    throw new Error(timedOut ? 'Spotify login service didn’t answer in time.' : 'No connection to Spotify.');
   }
   // Never log accounts.spotify.com bodies (spec §12.8): status and timing only.
   log('auth', `${what}: ${res.status} (${Math.round(performance.now() - started)} ms)`);
@@ -221,7 +226,15 @@ function refresh(staleToken: string): Promise<string> {
 
 async function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
   if (typeof navigator !== 'undefined' && navigator.locks) {
-    return navigator.locks.request('spotify-refresh', fn);
+    try {
+      return await navigator.locks.request('spotify-refresh', { signal: AbortSignal.timeout(LOCK_WAIT_MS) }, fn);
+    } catch (e) {
+      if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+        log('auth', 'waited too long for the refresh lock held by another window');
+        throw new Error('Login refresh is stuck in another app window. Close other windows, then try again.');
+      }
+      throw e;
+    }
   }
   return fn();
 }

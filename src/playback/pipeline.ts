@@ -7,7 +7,7 @@ import * as api from '../spotify/api';
 import { SpotifyError } from '../spotify/client';
 import type { PlaybackState } from '../spotify/types';
 import { parsePlaylistId, playlistUri } from '../spotify/uri';
-import { sleep } from '../sleep';
+import { raceAbort, sleep } from '../sleep';
 import { matchDevice, type DevicePref, type DeviceStore } from './devices';
 
 export const DEADLINE_MS = 12_000;
@@ -87,6 +87,24 @@ export function createRemoteDevice(pref: DevicePref, store: DeviceStore): Player
     wake: (id, signal) => api.transfer(id, { signal }),
     setShuffle: (id, on, signal) => api.setShuffle(id, on, { signal }),
     setRepeatContext: (id, signal) => api.setRepeat(id, 'context', { signal }),
+  };
+}
+
+/**
+ * Wrap a device so every call settles by the time its signal aborts. The deadline
+ * must win even when a call waits on something that ignores the signal (D3).
+ */
+export function guardDevice(d: PlayerDevice): PlayerDevice {
+  return {
+    label: d.label,
+    resolve: (signal, fresh) => raceAbort(d.resolve(signal, fresh), signal),
+    sendPlay: (id, req, signal) => raceAbort(d.sendPlay(id, req, signal), signal),
+    sendResume: (id, signal) => raceAbort(d.sendResume(id, signal), signal),
+    sendPause: (id, signal) => raceAbort(d.sendPause(id, signal), signal),
+    observe: (signal) => raceAbort(d.observe(signal), signal),
+    wake: (id, signal) => raceAbort(d.wake(id, signal), signal),
+    setShuffle: (id, on, signal) => raceAbort(d.setShuffle(id, on, signal), signal),
+    setRepeatContext: (id, signal) => raceAbort(d.setRepeatContext(id, signal), signal),
   };
 }
 
@@ -258,8 +276,9 @@ export function createPipeline(opts: PipelineOptions = {}) {
   }
 
   /** Press a playlist. Resolves with the final state of this press (for the Ready check). */
-  async function press(playlist: PlaylistRef, device: PlayerDevice): Promise<PressState> {
+  async function press(playlist: PlaylistRef, rawDevice: PlayerDevice): Promise<PressState> {
     const run = begin();
+    const device = guardDevice(rawDevice);
     const playlistId = playlist.id;
     const step = (s: string) => {
       if (!run.current()) return;
@@ -329,8 +348,9 @@ export function createPipeline(opts: PipelineOptions = {}) {
     return state.status === 'idle' ? null : state.playlistId;
   }
 
-  async function pause(device: PlayerDevice): Promise<PressState> {
+  async function pause(rawDevice: PlayerDevice): Promise<PressState> {
     const run = begin();
+    const device = guardDevice(rawDevice);
     const playlistId = currentPlaylistId();
     try {
       const id = await device.resolve(run.signal);
@@ -355,8 +375,9 @@ export function createPipeline(opts: PipelineOptions = {}) {
   }
 
   /** Resume is confirmed the same way as a press: observed playing and advancing. */
-  async function resume(device: PlayerDevice): Promise<PressState> {
+  async function resume(rawDevice: PlayerDevice): Promise<PressState> {
     const run = begin();
+    const device = guardDevice(rawDevice);
     const playlistId = currentPlaylistId();
     try {
       set({ status: 'starting', seq: run.mine, playlistId: playlistId ?? '', step: 'Resuming…' });

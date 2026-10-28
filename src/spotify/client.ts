@@ -36,6 +36,9 @@ interface ErrorBody {
   error?: { status?: number; message?: string; reason?: string } | string;
 }
 
+/** No single request may hang: a stuck fetch would also block every caller sharing it. */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
 /** Longest 429 wait we sit through silently (spec §12.7). */
 export const MAX_RATE_LIMIT_WAIT_SEC = 30;
 
@@ -112,10 +115,16 @@ export async function request<T>(
           ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         },
         body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-        signal: opts.signal,
+        signal: opts.signal
+          ? AbortSignal.any([opts.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+          : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (e) {
       if (opts.signal?.aborted) throw e;
+      if (e instanceof DOMException && e.name === 'TimeoutError') {
+        log('api', `${label} timed out after ${REQUEST_TIMEOUT_MS / 1000} s`);
+        throw new SpotifyError('network', 0, 'Spotify didn’t answer in time. Check the internet connection.');
+      }
       log('api', `${label} network error`);
       throw new SpotifyError('network', 0, 'No connection to Spotify. Check the internet connection.');
     }
