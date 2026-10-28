@@ -816,3 +816,122 @@ button.icon {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* ---------- milestone 2b: strip (compact and floating) ---------- */
+
+.pip-body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.strip {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.strip-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.strip-head strong {
+  color: var(--accent);
+}
+
+.strip-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.strip .player-bar {
+  position: static;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.6rem;
+}
+
+.strip .player-bar .now {
+  flex-basis: 100%;
+}
+
+.strip-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.strip-tile {
+  background: var(--panel);
+  border: 2px solid transparent;
+  border-radius: 10px;
+}
+
+.strip-tile.playing {
+  border-color: var(--ok);
+}
+
+.strip-tile.starting {
+  border-color: var(--accent);
+}
+
+.strip-tile.paused {
+  border-color: var(--warn);
+}
+
+.strip-tile.failed {
+  border-color: var(--bad);
+}
+
+.strip-tile > button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.strip-tile kbd,
+.kbd-gap {
+  flex: none;
+  width: 1.4rem;
+  text-align: center;
+}
+
+.strip-cover {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--panel-2);
+  flex: none;
+}
+
+.strip-name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  font-weight: 600;
+}
+
+.strip-tag {
+  color: var(--muted);
+  font-weight: normal;
+  font-size: 0.8em;
+}
+
+.strip-failure {
+  display: block;
+  padding: 0 0.6rem 0.4rem;
+  color: var(--bad);
+  font-size: 0.85em;
+}

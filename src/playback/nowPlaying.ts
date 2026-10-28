@@ -24,6 +24,16 @@ const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let inflight = false;
+/** True while the floating strip is open: it's on screen even if the main window is minimised. */
+let floating = false;
+
+const onScreen = () => floating || document.visibilityState === 'visible';
+
+export function setFloating(on: boolean): void {
+  floating = on;
+  if (on) void refreshNowPlaying();
+  schedule();
+}
 
 function set(next: Partial<NowPlaying>) {
   snap = { ...snap, ...next };
@@ -48,7 +58,7 @@ export async function refreshNowPlaying(): Promise<void> {
 function schedule() {
   if (timer) clearTimeout(timer);
   timer = null;
-  if (!running || document.visibilityState !== 'visible') return;
+  if (!running || !onScreen()) return;
   timer = setTimeout(async () => {
     await refreshNowPlaying();
     schedule();
@@ -56,7 +66,7 @@ function schedule() {
 }
 
 function onVisibility() {
-  if (document.visibilityState === 'visible') void refreshNowPlaying().then(schedule);
+  if (onScreen()) void refreshNowPlaying().then(schedule);
   else schedule(); // clears the timer
 }
 

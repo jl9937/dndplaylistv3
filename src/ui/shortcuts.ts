@@ -6,15 +6,18 @@ export interface ShortcutHandlers {
   playTile: (n: number) => void;
 }
 
+// Tag names, not instanceof: elements in the floating window come from another realm.
 function isTyping(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
-  return target instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(target.type);
+  const el = target as HTMLElement | null;
+  if (!el || typeof el.tagName !== 'string') return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'textarea' || tag === 'select') return true;
+  return tag === 'input' && !['checkbox', 'radio', 'button', 'submit'].includes((el as HTMLInputElement).type);
 }
 
 /** US-2a-5: Cmd/Ctrl+K or / for the palette, 1–9 for tiles. Space does nothing (D23). */
-export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean): void {
+export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean, extraWindow: Window | null = null): void {
   const ref = useRef(handlers);
   ref.current = handlers;
 
@@ -42,11 +45,16 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean): void
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.key === ' ' && !isTyping(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey) e.preventDefault();
     };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    const targets = extraWindow ? [window, extraWindow] : [window];
+    for (const w of targets) {
+      w.addEventListener('keydown', onKeyDown);
+      w.addEventListener('keyup', onKeyUp);
+    }
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      for (const w of targets) {
+        w.removeEventListener('keydown', onKeyDown);
+        w.removeEventListener('keyup', onKeyUp);
+      }
     };
-  }, [enabled]);
+  }, [enabled, extraWindow]);
 }

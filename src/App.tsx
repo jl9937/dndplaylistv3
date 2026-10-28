@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { daysUntilRelogin, logout, type CallbackResult } from './auth/auth';
 import { RELOGIN_WARN_DAYS } from './config';
 import { loadLibrary, resetLibrary } from './library/libraryStore';
 import { deviceStore, loadDevicePref, saveDevicePref, type DevicePref } from './playback/devices';
-import { displayStatus, refreshNowPlaying, startNowPlaying } from './playback/nowPlaying';
+import { displayStatus, refreshNowPlaying, setFloating, startNowPlaying } from './playback/nowPlaying';
 import { createRemoteDevice, pipeline } from './playback/pipeline';
 import { boardOrder, currentSet, hasPlaylist, moveScene, moveSection, removeScene, syncNames, togglePlaylist } from './sets/sets';
 import { updateSets } from './sets/setsStore';
@@ -21,6 +22,8 @@ import { PlayerBar } from './ui/PlayerBar';
 import { ReadyCheck } from './ui/ReadyCheck';
 import { useRoute } from './ui/router';
 import { useShortcuts } from './ui/shortcuts';
+import { canFloat, dockToRight, openFloat, restoreWindow } from './ui/compact';
+import { Strip } from './ui/Strip';
 import { itemStatus } from './ui/Status';
 
 export function App({ callback }: { callback: CallbackResult }) {
@@ -57,6 +60,8 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     setShowUntaggedState(v);
   };
   const deviceSelect = useRef<HTMLSelectElement>(null);
+  const [compact, setCompact] = useState(false);
+  const [pip, setPip] = useState<Window | null>(null);
 
   const set = currentSet(sets);
   const [route, go] = useRoute(set.scenes.length > 0 ? 'board' : 'library');
@@ -124,9 +129,68 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   };
 
   useShortcuts(
-    { openPalette: () => library.status === 'ok' && setShowPalette(true), playTile },
+    { openPalette: () => library.status === 'ok' && !compact && !pip && setShowPalette(true), playTile },
     !showPalette,
+    pip,
   );
+
+  const enterCompact = () => {
+    setShowPalette(false);
+    setCompact(true);
+    dockToRight();
+  };
+  const exitCompact = () => {
+    setCompact(false);
+    restoreWindow();
+  };
+
+  const float = async () => {
+    try {
+      const w = await openFloat();
+      w.addEventListener('pagehide', () => {
+        setPip(null);
+        setFloating(false);
+      });
+      setPip(w);
+      setFloating(true);
+      if (compact) exitCompact();
+    } catch (e) {
+      setNotice(`Couldn’t open the floating strip: ${e instanceof Error ? e.message : e}`);
+    }
+  };
+
+  // Closing the app closes the floating strip too.
+  useEffect(() => () => pip?.close(), [pip]);
+
+  const stripProps = { set, byId, press, now, canControl: !!device, statusOf, notice, onPlay: play, onToggle: togglePause, onNext: next };
+  const floatButton = canFloat() && !pip && (
+    <button onClick={float} title="Always on top, over other windows">
+      Float
+    </button>
+  );
+  const floating =
+    pip &&
+    createPortal(
+      <Strip {...stripProps} actions={<button onClick={() => pip.close()}>Back to app</button>} />,
+      pip.document.body,
+    );
+
+  if (compact) {
+    return (
+      <>
+        <Strip
+          {...stripProps}
+          actions={
+            <>
+              {floatButton}
+              <button onClick={exitCompact}>Expand</button>
+            </>
+          }
+        />
+        {floating}
+      </>
+    );
+  }
 
   const onLogout = () => {
     pipeline.reset();
@@ -157,6 +221,10 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           <button onClick={() => setShowReady((v) => !v)} disabled={library.status !== 'ok'}>
             Ready check
           </button>
+          <button onClick={enterCompact} title="Narrow strip for beside Notion">
+            Compact
+          </button>
+          {floatButton}
           <button className="link" onClick={onShowLog}>
             Log
           </button>
@@ -166,6 +234,12 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
         </nav>
       </header>
 
+      {pip && (
+        <p className="notice">
+          The strip is floating on top of your other windows.{' '}
+          <button onClick={() => pip.focus()}>Show it</button> <button onClick={() => pip.close()}>Close it</button>
+        </p>
+      )}
       <DevicePicker ref={deviceSelect} pref={pref} onChange={choosePref} />
       {notice && <p className="notice">{notice}</p>}
 
@@ -203,6 +277,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       {showPalette && (
         <Palette playlists={visible} inSet={inSet} onPlay={play} onToggleSet={toggleSet} onClose={() => setShowPalette(false)} />
       )}
+      {floating}
     </div>
   );
 }
