@@ -3,7 +3,7 @@
 
 import { log } from '../diagnostics/log';
 import { getMe, getMyPlaylists } from '../spotify/api';
-import type { Playlist } from '../spotify/types';
+import { pickCover, type Playlist } from '../spotify/types';
 import { read, write } from '../storage';
 
 export type LibraryState =
@@ -15,7 +15,6 @@ export type LibraryState =
       byId: Map<string, Playlist>;
       myId: string;
       fetchedAt: number;
-      refreshing: boolean;
       /** The last background refresh failed; showing the cached list. */
       refreshError: string | null;
     };
@@ -30,9 +29,8 @@ const CACHE_KEY = 'cache.library';
 
 /** Keep only what the UI needs, and one image, so the cache stays small. */
 function slim(p: Playlist): Playlist {
-  const images = p.images?.length
-    ? [p.images.filter((i) => (i.width ?? 0) >= 96).sort((a, b) => (a.width ?? 0) - (b.width ?? 0))[0] ?? p.images[0]]
-    : null;
+  const cover = pickCover(p.images);
+  const images = cover ? [cover] : null;
   const total = p.items?.total ?? p.tracks?.total;
   return {
     id: p.id,
@@ -52,14 +50,13 @@ function set(next: LibraryState) {
   listeners.forEach((fn) => fn());
 }
 
-function ok(playlists: Playlist[], myId: string, fetchedAt: number, refreshing: boolean, refreshError: string | null) {
+function ok(playlists: Playlist[], myId: string, fetchedAt: number, refreshError: string | null) {
   set({
     status: 'ok',
     playlists,
     byId: new Map(playlists.map((p) => [p.id, p])),
     myId,
     fetchedAt,
-    refreshing,
     refreshError,
   });
 }
@@ -68,7 +65,7 @@ function ok(playlists: Playlist[], myId: string, fetchedAt: number, refreshing: 
 export async function loadLibrary(): Promise<void> {
   const cached = read<Cached>(CACHE_KEY);
   if (cached?.playlists?.length) {
-    ok(cached.playlists, cached.myId, cached.at, true, null);
+    ok(cached.playlists, cached.myId, cached.at, null);
   } else {
     set({ status: 'loading' });
   }
@@ -77,11 +74,11 @@ export async function loadLibrary(): Promise<void> {
     const slimmed = playlists.map(slim);
     const at = Date.now();
     write(CACHE_KEY, { at, myId: me.id, playlists: slimmed } satisfies Cached);
-    ok(slimmed, me.id, at, false, null);
+    ok(slimmed, me.id, at, null);
     log('app', `library loaded: ${playlists.length} playlists`);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    if (state.status === 'ok') ok(state.playlists, state.myId, state.fetchedAt, false, message);
+    if (state.status === 'ok') ok(state.playlists, state.myId, state.fetchedAt, message);
     else set({ status: 'error', message });
   }
 }

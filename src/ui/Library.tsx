@@ -1,24 +1,19 @@
 import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
-import { describePlaylist, groupByTag, tagKey } from '../library/tags';
-import { trackCount, type Playlist } from '../spotify/types';
+import { describePlaylist, groupByTag, isListed, tagKey } from '../library/tags';
+import { songsLabel, type Playlist } from '../spotify/types';
 import { read, write } from '../storage';
 import { Cover } from './Cover';
 import { StatusBadge, type ItemStatus } from './Status';
-
-export function songs(p: Playlist): string | null {
-  const n = trackCount(p);
-  return n === undefined ? null : `${n} ${n === 1 ? 'song' : 'songs'}`;
-}
 
 export function Library({
   library,
   showUntagged,
   onShowUntagged,
   statusOf,
-  inSet,
+  isOnBoard,
   onPlay,
-  onToggleSet,
+  onToggleBoard,
   onRetry,
   onChooseDevice,
 }: {
@@ -26,9 +21,9 @@ export function Library({
   showUntagged: boolean;
   onShowUntagged: (show: boolean) => void;
   statusOf: (playlistId: string) => ItemStatus;
-  inSet: (playlistId: string) => boolean;
+  isOnBoard: (playlistId: string) => boolean;
   onPlay: (p: Playlist) => void;
-  onToggleSet: (p: Playlist) => void;
+  onToggleBoard: (p: Playlist) => void;
   onRetry: () => void;
   onChooseDevice: () => void;
 }) {
@@ -51,7 +46,7 @@ export function Library({
 
   const { groups, pills, untagged } = useMemo(() => {
     if (library.status !== 'ok') return { groups: [], pills: [], untagged: 0 };
-    const shown = library.playlists.filter((p) => !describePlaylist(p.name).hidden);
+    const shown = library.playlists.filter((p) => isListed(p.name, true));
     const all = groupByTag(shown, (p) => p.name);
     const untaggedCount = all.find((g) => g.key === '')?.items.length ?? 0;
     const pillGroups = showUntagged ? all : all.filter((g) => g.key !== '');
@@ -116,7 +111,7 @@ export function Library({
           <ul className="playlists">
             {g.items.map((p) => {
               const s = statusOf(p.id);
-              const starred = inSet(p.id);
+              const starred = isOnBoard(p.id);
               return (
                 <li key={p.id} className={`row ${s.status}`}>
                   <div className="row-main">
@@ -135,7 +130,7 @@ export function Library({
                           {describePlaylist(p.name).shortName}
                         </span>
                         <span className="owner">
-                          {[songs(p), p.owner.id !== library.myId ? `by ${p.owner.display_name ?? p.owner.id}` : null]
+                          {[songsLabel(p), p.owner.id !== library.myId ? `by ${p.owner.display_name ?? p.owner.id}` : null]
                             .filter(Boolean)
                             .join(' · ')}
                         </span>
@@ -144,7 +139,7 @@ export function Library({
                     </button>
                     <button
                       className={`fav${starred ? ' on' : ''}`}
-                      onClick={() => onToggleSet(p)}
+                      onClick={() => onToggleBoard(p)}
                       aria-pressed={starred}
                       title={starred ? 'Remove from the Board' : 'Add to the Board'}
                     >

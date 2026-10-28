@@ -212,8 +212,8 @@ export async function getAccessToken(): Promise<string> {
 }
 
 /**
- * Called after a 401 that used `staleToken`. If someone already replaced that token,
- * use the new one; otherwise refresh. Concurrent callers share one refresh.
+ * After a 401 that used `staleToken`: a fresh token. Concurrent callers share one refresh,
+ * and if another window already replaced the token, that one is reused (see doRefresh).
  */
 export function refreshAfter401(staleToken: string): Promise<string> {
   return refresh(staleToken);

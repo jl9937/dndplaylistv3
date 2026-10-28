@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { describePlaylist } from '../library/tags';
 import type { NowPlaying } from '../playback/nowPlaying';
 import type { PressState } from '../playback/pipeline';
-import { boardOrder, KEYED_TILES, type SessionSet } from '../sets/sets';
+import { boardOrder, KEYED_TILES, type BoardDoc, type Scene } from '../board/board';
 import type { Playlist } from '../spotify/types';
 import { Cover } from './Cover';
 import { PlayerBar } from './PlayerBar';
@@ -10,7 +10,7 @@ import { StatusBadge, type ItemStatus } from './Status';
 
 /** The narrow strip (spec §13.5). One component for docked compact mode and the floating window. */
 export function Strip({
-  set,
+  board,
   byId,
   press,
   now,
@@ -22,20 +22,20 @@ export function Strip({
   onNext,
   actions,
 }: {
-  set: SessionSet;
+  board: BoardDoc;
   byId: Map<string, Playlist>;
   press: PressState;
   now: NowPlaying;
   canControl: boolean;
   statusOf: (playlistId: string) => ItemStatus;
   notice: string | null;
-  onPlay: (p: Playlist) => void;
+  onPlay: (scene: Scene) => void;
   onToggle: () => void;
   onNext: () => void;
   /** Buttons for the header: Expand, Float, Back to app. */
   actions: ReactNode;
 }) {
-  const scenes = boardOrder(set);
+  const scenes = boardOrder(board);
   return (
     <div className="strip">
       <header className="strip-head">
@@ -53,7 +53,7 @@ export function Strip({
           const tag = tags[0];
           return (
             <li key={scene.id} className={`strip-tile ${s.status}`}>
-              <button onClick={() => playlist && onPlay(playlist)} disabled={!playlist}>
+              <button onClick={() => onPlay(scene)} disabled={!playlist}>
                 {i < KEYED_TILES ? <kbd>{i + 1}</kbd> : <span className="kbd-gap" />}
                 <Cover images={playlist?.images} className="strip-cover" />
                 <span className="strip-name">

@@ -1,13 +1,15 @@
 // "This browser" as a pipeline device (Milestone 1b). Commands still go through the Web
 // API with our device_id; confirmation reads the SDK's own state, which is faster.
 
-import type { PlayerDevice } from '../playback/pipeline';
+import type { PlayerDevice } from '../playback/device';
 import * as api from '../spotify/api';
 import type { WebPlayback } from './webPlayback';
 
 export const BROWSER_LABEL = 'This browser';
 /** The stored device choice for "This browser". */
 export const BROWSER_PREF = { name: BROWSER_LABEL, type: 'browser' } as const;
+
+export const isBrowserPref = (p: { type: string } | null): boolean => p?.type === BROWSER_PREF.type;
 
 export function createSdkDevice(wp: WebPlayback): PlayerDevice {
   return {

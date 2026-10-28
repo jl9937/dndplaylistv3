@@ -52,3 +52,15 @@ export interface PlaybackState {
 export function trackCount(p: Playlist): number | undefined {
   return p.items?.total ?? p.tracks?.total ?? undefined;
 }
+
+export function songsLabel(p: Playlist): string | null {
+  const n = trackCount(p);
+  return n === undefined ? null : `${n} ${n === 1 ? 'song' : 'songs'}`;
+}
+
+/** The smallest image at least 96 px wide (sharp at 48 px on retina), else the first. */
+export function pickCover(images: Image[] | null | undefined): Image | null {
+  if (!images?.length) return null;
+  const ok = images.filter((i) => (i.width ?? 0) >= 96).sort((a, b) => (a.width ?? 0) - (b.width ?? 0));
+  return ok[0] ?? images[0];
+}

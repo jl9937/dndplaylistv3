@@ -2,12 +2,11 @@ import { useEffect, type Ref } from 'react';
 import { startLogin } from '../auth/auth';
 import { deviceStore, firstRunDefault, isUsable, matchDevice, type DevicePref } from '../playback/devices';
 import { takeOverPlayer, webPlayback } from '../player/instance';
-import { BROWSER_PREF } from '../player/sdkDevice';
+import { BROWSER_PREF, isBrowserPref } from '../player/sdkDevice';
 import { describeSdk, SDK_PLAYER_NAME } from '../player/webPlayback';
 import { useDevices, useSdkStatus } from './hooks';
 
 const keyOf = (p: DevicePref) => `${p.type}\u0000${p.name}`;
-export const isBrowserPref = (p: DevicePref | null) => p?.type === BROWSER_PREF.type;
 
 export function DevicePicker({
   pref,

@@ -2,7 +2,7 @@
 // window instead, with a notice. Only ever to "This browser", never to a phone.
 // Make a new one per press, so the next press tries the chosen device again.
 
-import { DeviceMissingError, type PlayerDevice } from './pipeline';
+import { DeviceMissingError, type PlayerDevice } from './device';
 
 export function createFallbackDevice(
   primary: PlayerDevice,

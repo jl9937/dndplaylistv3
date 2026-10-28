@@ -2,7 +2,7 @@
 
 A small web app for switching Spotify playlists quickly while running a D&D session. Before the game, pick a few playlists. During the game, switch between them with one click. Spotify does the playing; this app tells it what to play.
 
-Status: Milestones 1, 2a, 2b and 1b built and deployed. The Milestone 1 soak test is still to do.
+Status: Milestones 1, 1b, 2a, 2b and most of 3 built and deployed. Next: Milestone 4 (ambience mixer). The Milestone 1 soak test is still to do.
 
 ## Docs
 
@@ -21,7 +21,7 @@ Static single-page app: Vite + React + TypeScript, plain CSS, Vitest. Spotify Au
 ## One-time setup
 
 ### 1. Spotify developer app
-1. In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), create an app. Tick **Web API** (and **Web Playback SDK**, ready for Milestone 1b).
+1. In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), create an app. Tick **Web API** and **Web Playback SDK** (the in-browser player).
 2. Add both redirect URIs, exactly:
    - `http://127.0.0.1:5173/` (local dev; Spotify rejects `localhost`)
    - the production URL, `https://dndplaylistv3.jim-lumsden.workers.dev/`
@@ -107,9 +107,15 @@ For anything the names can't express. `tagRules` add a tag to every playlist who
 
 ## Using it
 
-1. Log in with Spotify.
-2. Open the Spotify desktop app. Choose it under **Plays on** (on first run it is suggested if it's the only computer listed).
-3. Before the session, press **Ready check**: it checks the login, the device, a test play (then pauses), shuffle and repeat.
-4. Click a playlist. It starts at a random track, shuffled, repeating. The row shows **Playing** only once Spotify is seen playing it; otherwise **Failed** with the reason and what to do.
+1. **Log in** with Spotify.
+2. **Plays on:** choose the Spotify desktop app (suggested on first run if it's the only computer), a phone, or **This browser**. If the desktop app isn't open when you press a playlist, it plays in this window instead, with a notice.
+3. **Library:** playlists in cards, grouped by tag. Use the **pills** to show only some tags. **☆ Add** puts a playlist on the Board.
+4. **Board:** your playlists as tiles in sections by tag. Click a tile or press **1–9**. Drag tiles to reorder within a section; ↑/↓ moves a whole section.
+5. **Any playlist:** press **Cmd+K** or **/**, type, then **Enter** to play or **Shift+Enter** to add it to the Board.
+6. **Bottom bar:** what's playing, **Pause/Resume** and **Next**. With **✓ Fade** on, a switch fades the old music out over 3 s, then the new playlist starts at full volume.
+7. **Compact** turns the window into a narrow strip (the installed app docks itself to the screen edge). **Float** opens the strip always-on-top, over Notion (Chrome or Edge).
+8. **Ready check** before a session: login, device, a test play (then pause), shuffle and repeat.
+
+Every press starts at a random track, shuffled, repeating the playlist. A tile shows **Playing** only once Spotify is seen playing it; otherwise **Failed** with the reason and what to do.
 
 **Log** (or `?debug` in the URL) opens the event log, with **Copy log** and fault-injection buttons for testing token refresh. Its header shows the **build ID** (commit and build time). After a deploy, an open app window keeps running the old build until you reload it (Cmd+Shift+R), so check the build ID before reporting a bug.

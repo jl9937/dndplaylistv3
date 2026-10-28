@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createPipeline,
-  DeviceMissingError,
-  type Observation,
-  type PlayerDevice,
-} from '../src/playback/pipeline';
+import { DeviceMissingError, type Observation, type PlayerDevice } from '../src/playback/device';
+import { createPipeline } from '../src/playback/pipeline';
 import type { PlayRequest } from '../src/spotify/api';
 import { SpotifyError } from '../src/spotify/client';
 import { parsePlaylistId } from '../src/spotify/uri';
@@ -422,6 +418,18 @@ describe('soft transitions', () => {
     await vi.advanceTimersByTimeAsync(10_000);
     await Promise.all([first, second]);
     expect(pipeline.getState()).toMatchObject({ status: 'playing', playlistId: 'B' });
+    expect(fake.volume).toBe(80);
+  });
+
+  it('pressing Next mid-fade still ends at full volume (regression: it ended at 0)', async () => {
+    const { device, fake } = fakeDevice();
+    fake.start('OLD');
+    const pipeline = fading();
+    const p = pipeline.press({ id: 'NEW' }, device);
+    await vi.advanceTimersByTimeAsync(500); // mid fade-out
+    await pipeline.next(device);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect((await p).status).toBe('playing');
     expect(fake.volume).toBe(80);
   });
 

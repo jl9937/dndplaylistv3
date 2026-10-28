@@ -64,6 +64,12 @@ for (const e of loaded.errors) log('app', `config/tags.json: ${e} (rule skipped)
 
 export const describePlaylist = createDescriber(loaded.config);
 
+/** Shown in the Library and palette: not hidden by a rule, and tagged unless untagged are shown. */
+export function isListed(name: string, showUntagged: boolean, describe = describePlaylist): boolean {
+  const d = describe(name);
+  return !d.hidden && (showUntagged || d.tags.length > 0);
+}
+
 /** The section a playlist goes in on the Board: its first tag. */
 export const primaryTagKey = (name: string, describe = describePlaylist) => tagKey(describe(name).tags[0] ?? null);
 

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { search } from '../library/search';
 import { describePlaylist, groupByTag, labelFor, primaryTagKey, tagLabels } from '../library/tags';
-import type { Playlist } from '../spotify/types';
+import { songsLabel, type Playlist } from '../spotify/types';
 import { Cover } from './Cover';
-import { songs } from './Library';
 
 const MAX_RESULTS = 60;
 
@@ -36,15 +35,15 @@ function grouped(playlists: Playlist[], query: string): Group[] {
 
 export function Palette({
   playlists,
-  inSet,
+  isOnBoard,
   onPlay,
-  onToggleSet,
+  onToggleBoard,
   onClose,
 }: {
   playlists: Playlist[];
-  inSet: (playlistId: string) => boolean;
+  isOnBoard: (playlistId: string) => boolean;
   onPlay: (p: Playlist) => void;
-  onToggleSet: (p: Playlist) => void;
+  onToggleBoard: (p: Playlist) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -75,7 +74,7 @@ export function Palette({
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) {
-        if (current) onToggleSet(current);
+        if (current) onToggleBoard(current);
       } else play(current);
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -105,7 +104,7 @@ export function Palette({
               <div className="palette-group">{g.label}</div>
               {g.items.map((p) => {
                 const selected = p === current;
-                const starred = inSet(p.id);
+                const starred = isOnBoard(p.id);
                 return (
                   <div
                     key={p.id}
@@ -118,13 +117,13 @@ export function Palette({
                   >
                     <Cover images={p.images} className="palette-cover" />
                     <span className="palette-name">{describePlaylist(p.name).shortName}</span>
-                    {songs(p) && <span className="palette-songs">{songs(p)}</span>}
+                    {songsLabel(p) && <span className="palette-songs">{songsLabel(p)}</span>}
                     <button
                       className={`fav small${starred ? ' on' : ''}`}
                       tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onToggleSet(p);
+                        onToggleBoard(p);
                       }}
                       aria-pressed={starred}
                       title={starred ? 'Remove from the Board' : 'Add to the Board'}

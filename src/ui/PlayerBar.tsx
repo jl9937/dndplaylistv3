@@ -79,7 +79,7 @@ export function PlayerBar({
             className={`pill${fade.on ? ' on' : ''}`}
             aria-pressed={fade.on}
             onClick={fade.toggle}
-            title="Fade out, switch, fade in when you change playlist"
+            title="Fade the music out before switching playlist"
           >
             {fade.on ? '✓ Fade' : 'Fade off'}
           </button>

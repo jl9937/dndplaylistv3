@@ -82,11 +82,11 @@ src/
     tags.ts          parsePlaylistName, groupByTag (pure, tested)
     search.ts        fuzzy scoring over short name + tag (pure, tested)
     libraryStore.ts  fetch, cache in localStorage (cache.library), subscribe
-  sets/
-    sets.ts          SessionSet / Scene types, pure operations: toggle, remove,
+  board/             (renamed from sets/ after D23)
+    board.ts         BoardDoc / Scene types, pure operations: toggle, remove,
                      move within section, move section, sections() (tested)
-    setsStore.ts     persistence (sets.v1), current set, storage.persist()
-    validate.ts      validates the stored Board document (tested)
+    boardStore.ts    persistence (sets.board), v1 migration, storage.persist()
+    validate.ts      validates the stored Board, migrates v1 (tested)
   playback/
     nowPlaying.ts    visible-only polling of GET /me/player
   ui/
@@ -94,8 +94,8 @@ src/
     Board.tsx  Library.tsx  Palette.tsx  shortcuts.ts
 ```
 - The storage namespace `cache.*` is new. It's cleared on logout, like `auth.*`.
-- The sets document is versioned (`{version: 1, currentId, sets: [...]}`) so later milestones can migrate it.
-- Number keys and Board order come from one function, `boardOrder(set, library)`, so they can't disagree.
+- The Board document is versioned. It was v1 (`{version: 1, currentId, sets: [...]}`, several sets) and is now v2 (`{version: 2, scenes}`, one Board, D23). v1 is migrated once on load.
+- Number keys and Board order come from one function, `boardOrder(board)`, so they can't disagree.
 
 ## Definition of done
 - [ ] Acceptance criteria pass by hand in Chrome or Edge, against real Spotify.

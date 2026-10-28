@@ -5,7 +5,8 @@ import { RELOGIN_WARN_DAYS } from '../config';
 import { getPlaybackState } from '../spotify/api';
 import { sleep } from '../sleep';
 import type { DevicePref } from './devices';
-import { DEADLINE_MS, type Pipeline, type PlayerDevice, type PlaylistRef } from './pipeline';
+import type { PlayerDevice } from './device';
+import { DEADLINE_MS, type Pipeline, type PlaylistRef } from './pipeline';
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'warn' | 'fail';
 

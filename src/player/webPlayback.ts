@@ -5,10 +5,13 @@
 // /me/player/devices) → [not_ready | wake] → recovering → ready | failed.
 
 import { log } from '../diagnostics/log';
-import type { Observation } from '../playback/pipeline';
+import type { Observation } from '../playback/device';
 import { raceAbort, sleep } from '../sleep';
+import { parsePlaylistId } from '../spotify/uri';
 
 export const SDK_PLAYER_NAME = 'D&D Playlist Manager';
+/** How this player is labelled in the UI (also BROWSER_LABEL in sdkDevice.ts). */
+const BROWSER_LABEL = 'This browser';
 export const SDK_URL = 'https://sdk.scdn.co/spotify-player.js';
 /** Registration polls after `ready` (the first play after ready often 404s otherwise). */
 export const REGISTER_DELAYS_MS = [500, 1000, 2000, 4000];
@@ -353,12 +356,10 @@ export function createWebPlayback(deps: WebPlaybackDeps) {
     if (!s || !deviceId) return null;
     const volume = await player!.getVolume().catch(() => null);
     const track = s.track_window.current_track;
-    const uri = s.context?.uri ?? null;
-    const m = uri ? /playlist:([A-Za-z0-9]+)$/.exec(uri) : null;
     return {
       deviceId,
-      deviceName: 'This browser',
-      playlistId: m ? m[1] : null,
+      deviceName: BROWSER_LABEL,
+      playlistId: parsePlaylistId(s.context?.uri),
       isPlaying: !s.paused,
       progressMs: s.position,
       trackId: track?.id ?? null,

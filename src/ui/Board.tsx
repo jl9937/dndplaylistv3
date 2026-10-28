@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { describePlaylist } from '../library/tags';
-import { KEYED_TILES, sections, type Scene, type SessionSet } from '../sets/sets';
+import { KEYED_TILES, sections, type BoardDoc, type Scene } from '../board/board';
 import type { Playlist } from '../spotify/types';
 import { Cover } from './Cover';
 import { StatusBadge, type ItemStatus } from './Status';
 
 export function Board({
-  set,
+  board,
   byId,
   statusOf,
   onPlay,
@@ -15,17 +15,17 @@ export function Board({
   onMoveSection,
   onOpenLibrary,
 }: {
-  set: SessionSet;
+  board: BoardDoc;
   byId: Map<string, Playlist>;
   statusOf: (playlistId: string) => ItemStatus;
-  onPlay: (p: Playlist) => void;
+  onPlay: (scene: Scene) => void;
   onRemove: (sceneId: string) => void;
   onMoveScene: (sceneId: string, targetSceneId: string) => void;
   onMoveSection: (key: string, dir: -1 | 1) => void;
   onOpenLibrary: () => void;
 }) {
   const [dragging, setDragging] = useState<{ sceneId: string; section: string } | null>(null);
-  const list = sections(set);
+  const list = sections(board);
 
   if (list.length === 0) {
     return (
@@ -42,7 +42,7 @@ export function Board({
   let n = 0;
   return (
     <section className="board">
-      {set.scenes.length > KEYED_TILES && (
+      {board.scenes.length > KEYED_TILES && (
         <p className="hint subtle">Only the first {KEYED_TILES} tiles have number keys.</p>
       )}
       {list.map((section, si) => (
@@ -109,7 +109,7 @@ function Tile({
   playlist: Playlist | undefined;
   status: ItemStatus;
   dropTarget: boolean;
-  onPlay: (p: Playlist) => void;
+  onPlay: (scene: Scene) => void;
   onRemove: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -134,7 +134,7 @@ function Tile({
         onDrop();
       }}
     >
-      <button className="tile-play" onClick={() => playlist && onPlay(playlist)} disabled={!playlist}>
+      <button className="tile-play" onClick={() => onPlay(scene)} disabled={!playlist}>
         <Cover images={playlist?.images} className="tile-cover" />
         <span className="tile-name">{shortName}</span>
         {number !== null && <kbd className="tile-key">{number}</kbd>}
@@ -143,7 +143,7 @@ function Tile({
       {!playlist && <span className="tile-note">Not in your library any more</span>}
       {status.status === 'failed' && status.reason && (
         <span className="tile-failure">
-          {status.reason} <button onClick={() => playlist && onPlay(playlist)}>Try again</button>
+          {status.reason} <button onClick={() => onPlay(scene)}>Try again</button>
         </span>
       )}
       <button className="icon tile-remove" onClick={onRemove} aria-label={`Remove ${shortName} from the Board`} title="Remove from the Board">

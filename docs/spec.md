@@ -30,11 +30,10 @@ A small web app that sits on top of Spotify. **Before** the session, I pick a ha
 | Term | Meaning |
 |---|---|
 | **Library** | All playlists returned by `GET /me/playlists` (owned and followed). Flat list. |
-| **Session set** | A named, ordered selection of playlists for one game session, for example "Session 14: Sunless Citadel". |
-| **Board** | The in-session view: the current session set shown as large buttons. |
+| **Board** | The in-session view: your chosen playlists as tiles, in sections by tag, with number keys 1–9. There is one Board (D23). |
 | **Device** | A Spotify Connect target: "This browser" (Web Playback SDK) or any other active Spotify client. |
-| **Tag** | The type marker already in a playlist's name (for example town, mood, scenario), parsed by the app. Replaces folders for browsing and grouping. The **short name** is the name with the tag removed. |
-| **Scene** | One item in a session set: a playlist, plus an optional label and (from Milestone 4) an ambience preset. |
+| **Tag** | A group marker in a playlist's name: `Tag:` at the start (the main group) and `[Tag]` anywhere (extra groups), plus any rules in `config/tags.json` (D24, D25). Replaces folders for browsing and grouping. The **short name** is the name with tags removed. |
+| **Scene** | One Board tile: a playlist, plus (from Milestone 4) an ambience preset. Stored fields a feature adds survive load and save. |
 | **Ambience layer** | One looping, non-Spotify background sound with its own volume (Milestone 4). |
 | **Studio** | The playlist design and analysis page (Milestone 5). |
 
@@ -44,10 +43,14 @@ A small web app that sits on top of Spotify. **Before** the session, I pick a ha
 ┌────────────────────── Browser (static SPA, Vite + React + TS) ───────────────────────┐
 │                                                                                        │
 │  auth/        PKCE login, token refresh, logout                                        │
-│  spotify/     thin typed fetch client: me, playlists, devices, play, pause, shuffle    │
-│  player/      Web Playback SDK wrapper → registers "This browser" as a Connect device  │
-│  ui/          Library view, Board view, device picker, now playing                     │
-│  storage/     localStorage: refresh token, session sets, settings                     │
+│  spotify/     thin typed fetch client: me, playlists, devices, play, volume, shuffle  │
+│  playback/    play pipeline, devices, fallback, fader, now playing, Ready check        │
+│  player/      Web Playback SDK lifecycle → "This browser" as a Connect device          │
+│  library/     library cache, tags (names + config/tags.json), fuzzy search             │
+│  board/       the Board: scenes, sections, storage (with v1 migration)                 │
+│  diagnostics/ event log (200, scrubbed)                                                │
+│  ui/          Library, Board, palette, strip, device picker, now playing               │
+│  storage.ts   namespaced localStorage: auth.*, cache.*, prefs.*, sets.*               │
 │                                                                                        │
 │  later:                                                                                │
 │  ambience/    Web Audio engine: looping layers, per-layer gain (M4)                    │
@@ -70,7 +73,7 @@ The music and ambience audio paths are deliberately independent. If music plays 
 
 - **Hosting:** Cloudflare Workers static assets, at `https://dndplaylistv3.jim-lumsden.workers.dev/` (D7). Local dev on `http://127.0.0.1:5173/`.
 - **Redirect URI:** the app root (no `/callback` route), so no SPA fallback is needed for the login callback.
-- **Persistence:** `localStorage` only, with namespaced keys (`auth.*`, `prefs.*`, `sets.*`). No server, no database. Session sets can be exported and imported as JSON (Milestone 2).
+- **Persistence:** `localStorage` only, with namespaced keys: `auth.*` (tokens), `cache.*` (the library), `prefs.*` (settings), `sets.*` (the Board, `sets.board`). No server, no database. Logout clears `auth.*` and `cache.*`.
 - **Origin:** browser storage is shared by every page on the same origin. See D7.
 
 ## 7. Functional requirements by milestone
@@ -94,7 +97,7 @@ Detailed in [milestone-1b.md](milestone-1b.md). Split out of Milestone 1 (D16).
 ### Milestone 2: Board, session sets, tags from names
 Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md).
 - **Tags from playlist names:** parse the tag already in each playlist name (for example a town, mood or scenario prefix) with a configurable rule. Show the **short name** with the tag removed, and **group the Library by tag**. Display only: Spotify names are not changed. See [§13.1](#131-tags-from-playlist-names).
-- Mark playlists as part of a session set from the Library view (star/checkbox).
+- Add playlists to the Board from the Library (**☆ Add**).
 - Board view: the set's playlists as large tiles in my chosen order (drag to reorder).
 - **Quick switch to any playlist:** from the Board, one key (`/` or `Ctrl/Cmd+K`) opens a search palette over the *whole* library, grouped by tag. `Enter` plays the result through the same play pipeline. An option adds it to the current set. See [§13.2](#132-reaching-non-selected-playlists-mid-session).
 - Keyboard shortcuts: `1`–`9` start the matching tile. (`Space` dropped, D23.)
@@ -102,15 +105,14 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 - Shuffle on by default when starting a playlist (setting). Repeat context on, so the music does not stop.
 - ~~Several saved session sets. Switch between them.~~ Dropped: one Board (D23).
 - ~~Export and import session sets as JSON.~~ Dropped (D23). Call `navigator.storage.persist()` on first save.
-- Session set items are stored as **scene** objects, not bare playlist IDs, so that ambience layers can be attached later without migrating data (see [§5](#5-concepts)).
+- Board items are stored as **scene** objects, not bare playlist IDs, so that ambience layers can be attached later (see [§5](#5-concepts)). Extra scene fields survive load and save.
 - **Compact mode** (D12): (A) docked strip, then (B) always-on-top floating strip after a spike. See [§13.5](#135-compact-mode).
 - Hash-based page routing (`#/board`, `#/library`, later `#/ambience`, `#/studio`). It needs no server-side SPA fallback.
 
 ### Milestone 3: Quality of life
 - Manual tag overrides for playlists whose names don't follow the convention.
-- Include tag overrides in the JSON export.
 - Resume position: return to a playlist where it left off rather than restarting. Needs research: the API has no per-context resume, so we would store the last track URI and position per playlist and pass `offset` and `position_ms`.
-- Soft transitions: fade down, switch, fade up. On "This browser" use the SDK's `player.setVolume()` (local, instant). On remote devices use a few coarse `PUT /me/player/volume` steps, or none: that endpoint is rate-limited and its commands don't run in a guaranteed order.
+- Soft transitions: fade out, then the new playlist at full volume (built, D26). On "This browser" use the SDK's `player.setVolume()` (local, instant). On remote devices use a few coarse `PUT /me/player/volume` steps, or none: that endpoint is rate-limited and its commands don't run in a guaranteed order.
 - Offline shell (a service worker) so the app window opens instantly. Service-worker scope needs a unique origin (D7).
 
 ### Milestone 4: Ambience mixer (starts with a research spike)
@@ -328,9 +330,9 @@ These are not committed designs. They record enough thinking that the early mile
 - **Why not rename in Spotify?** It would need write scopes, would lose the grouping inside the Spotify app, and the tags would then have to live somewhere else (in this app's storage, or in each playlist's description). We can reconsider in Milestone 5, but it isn't needed.
 
 ### 13.2 Reaching non-selected playlists mid-session
-- The Board stays focused on the session set, but the **whole library is always one key away**. `/` or `Ctrl/Cmd+K` opens a palette with instant fuzzy search over short names and tags, grouped by tag. Arrow keys and `Enter` play the result.
+- The Board stays focused on its tiles, but the **whole library is always one key away**. `/` or `Ctrl/Cmd+K` opens a palette with instant fuzzy search over short names and tags, grouped by tag. Arrow keys and `Enter` play the result.
 - There is also a visible "All playlists" button for mouse use.
-- After playing from the palette, a small "Add to set" action pins the playlist to the current session set.
+- From the palette, **Add** (or `Shift+Enter`) puts the playlist on the Board.
 - The library list is fetched at login and cached in memory (and in `localStorage` with a timestamp), so the palette opens instantly with no API call.
 
 ### 13.3 Ambience mixer

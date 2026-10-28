@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createFallbackDevice } from '../src/playback/fallback';
-import { DeviceMissingError, type PlayerDevice } from '../src/playback/pipeline';
+import { DeviceMissingError, type PlayerDevice } from '../src/playback/device';
 
 function device(label: string, resolve: PlayerDevice['resolve']): PlayerDevice {
   return {
