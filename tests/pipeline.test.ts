@@ -155,6 +155,30 @@ describe('play pipeline', () => {
     expect(device.sendPlay).toHaveBeenCalledTimes(3);
   });
 
+  it('retries once without the random start when Spotify refuses that track', async () => {
+    const { device } = fakeDevice();
+    const realPlay = device.sendPlay;
+    device.sendPlay = vi.fn(async (id, req, signal) => {
+      if (req.offsetPosition !== undefined) throw new SpotifyError('restriction', 403, 'Spotify refused: Restriction violated');
+      return realPlay(id, req, signal);
+    });
+    const p = createPipeline({ random: () => 0.5 }).press({ id: 'PL1', total: 165 }, device);
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect((await p).status).toBe('playing');
+    expect(vi.mocked(device.sendPlay).mock.calls.map((c) => c[1].offsetPosition)).toEqual([82, undefined]);
+  });
+
+  it('fails visibly if Spotify refuses even without a random start', async () => {
+    const { device } = fakeDevice();
+    device.sendPlay = vi.fn(async () => {
+      throw new SpotifyError('restriction', 403, 'Spotify refused: Restriction violated');
+    });
+    const p = createPipeline().press({ id: 'PL1', total: 10 }, device);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await p).toMatchObject({ status: 'failed', reason: 'Spotify refused: Restriction violated' });
+    expect(device.sendPlay).toHaveBeenCalledTimes(2);
+  });
+
   it('does not retry other errors', async () => {
     const { device } = fakeDevice();
     device.sendPlay = vi.fn(async () => {

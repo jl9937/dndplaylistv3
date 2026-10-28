@@ -332,12 +332,20 @@ export function createPipeline(opts: PipelineOptions = {}) {
     req: api.PlayRequest,
     run: ReturnType<typeof begin>,
     step: (s: string) => void,
-  ): Promise<string> {
+  ): Promise<{ id: string; req: api.PlayRequest }> {
     for (let attempt = 0; ; attempt++) {
       try {
         await device.sendPlay(id, req, run.signal);
-        return id;
+        return { id, req };
       } catch (e) {
+        // "Restriction violated" with a random start usually means that track can't play
+        // (a local file, or unavailable here). Retry once from Spotify's own start, still shuffled.
+        if (e instanceof SpotifyError && e.kind === 'restriction' && req.offsetPosition !== undefined) {
+          log('pipeline', `#${run.mine} refused at track ${req.offsetPosition + 1}; retrying without a random start`);
+          step('Retrying…');
+          req = { contextUri: req.contextUri };
+          continue;
+        }
         const retryable = e instanceof SpotifyError && [404, 502, 503].includes(e.status);
         if (!retryable || attempt >= RETRY_DELAYS_MS.length) throw e;
         step('Retrying…');
@@ -368,9 +376,9 @@ export function createPipeline(opts: PipelineOptions = {}) {
 
       const offsetPosition =
         playlist.total && playlist.total > 0 ? Math.floor(random() * playlist.total) : undefined;
-      const req = { contextUri: playlistUri(playlistId), offsetPosition };
+      let req: api.PlayRequest = { contextUri: playlistUri(playlistId), offsetPosition };
       step(offsetPosition === undefined ? 'Starting…' : `Starting at track ${offsetPosition + 1}…`);
-      id = await sendWithRetry(device, id, req, run, step);
+      ({ id, req } = await sendWithRetry(device, id, req, run, step));
       accepted = true;
 
       step('Confirming…');

@@ -503,6 +503,7 @@ button.icon {
 .library-group .playlists {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 0.5rem;
+  align-items: start; /* a card showing a failure grows alone, not its whole row */
 }
 
 .library-group .row {

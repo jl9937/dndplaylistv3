@@ -161,6 +161,7 @@ Goals: as simple as possible, quick to develop, flexible enough for later featur
 ### Spike notes (Milestone 1, live)
 - **2026-10-28, first production login:** login (PKCE, workers.dev redirect), the library (148 playlists, paginated) and device listing (the MacBook Pro desktop app, listed as `Computer`, active) all worked first time. Pause and resume worked.
 - **`PUT /me/player/play` with a `context_uri` returns 200 with a plain-text body** (an opaque ID-like string), not an empty body. The first build parsed every non-empty 2xx body as JSON, so it threw and showed a false **Failed**. Fixed: the client never requires JSON on a 2xx (spec §12.7).
+- **403 "Restriction violated" on a play with a random start** (2026-10-28, "This browser", a 165-song playlist). It was a one-off, and it played on retry. The likely cause is a random start on a track that can't play, such as a local file or one unavailable in this market. Fixed: a refused play with an offset is retried once without the offset, still shuffled.
 - **A press stuck on "Finding device…"**, past the 12 s deadline: a silent failure. The deadline only cancelled work that honoured the abort signal, and finding the device can wait on things that don't: a shared in-flight device-list request, a token refresh, the cross-window refresh lock. Fixed: every pipeline device call is raced against the deadline (`guardDevice`), every API and token request has a 10 s timeout, and the lock wait has a 15 s timeout. Root cause of this hang still to confirm from the log.
 
 ---
