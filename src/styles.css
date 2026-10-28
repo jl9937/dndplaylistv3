@@ -139,7 +139,7 @@ input[type='search'] {
 /* ---------- app shell ---------- */
 
 .app {
-  max-width: 1040px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 1rem;
   display: grid;
@@ -498,7 +498,26 @@ button.icon {
   align-items: center;
 }
 
-/* library */
+/* library: cards in as many columns as fit */
+
+.library-group .playlists {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.5rem;
+}
+
+.library-group .row {
+  display: grid;
+  align-content: start;
+}
+
+/* Cards are narrow: wrap long names to two lines instead of cutting them off. */
+.library-group .meta .name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
 
 .library-group h2 {
   margin: 1rem 0 0.4rem;
@@ -530,7 +549,7 @@ button.icon {
   align-items: center;
   gap: 0.4rem;
   min-height: 44px;
-  min-width: 9.5rem;
+  min-width: 6.5rem;
   justify-content: center;
   margin: 0.3rem 0.5rem 0.3rem 0;
   padding: 0.4rem 0.9rem;

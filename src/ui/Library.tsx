@@ -98,7 +98,7 @@ export function Library({
                       aria-pressed={starred}
                       title={starred ? 'Remove from the Board' : 'Add to the Board'}
                     >
-                      <span aria-hidden>{starred ? '★' : '☆'}</span> {starred ? 'On Board' : 'Add to Board'}
+                      <span aria-hidden>{starred ? '★' : '☆'}</span> {starred ? 'On Board' : 'Add'}
                     </button>
                   </div>
                   {s.status === 'failed' && (

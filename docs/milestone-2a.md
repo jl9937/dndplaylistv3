@@ -13,13 +13,13 @@ Before a session, I star the 5–9 playlists I'll need. During the session, the 
 - **D21:** Now playing shows **track and artist**, with **Next** beside Pause/Resume. No volume slider, no cover art.
 - **D22:** 2a comes before Milestone 1b and before the Milestone 1 soak test, at Jim's request. Milestone 1 works in real use.
 - The known-tags allowlist (spec §13.1) is deferred to Milestone 3, with tag overrides.
-- **D23 (after first use):** one Board, no named sets, no export/import. No Space shortcut. Untagged playlists hidden by default. A labelled **Add to Board** button. Song counts on rows. The criteria below are updated to match.
+- **D23 (after first use):** one Board, no named sets, no export/import. No Space shortcut. Untagged playlists hidden by default. A labelled **Add** / **On Board** button. The Library is a multi-column grid of cards. Song counts on rows. The criteria below are updated to match.
 
 ## Scope
 
 **In:**
 - tag parsing and the Library grouped by tag
-- one Board, filled with **Add to Board** from the Library and the palette
+- one Board, filled with **Add** from the Library and the palette
 - the Board
 - the quick-switch palette
 - keyboard shortcuts
@@ -42,7 +42,7 @@ Before a session, I star the 5–9 playlists I'll need. During the session, the 
 - [ ] The Library shows sections by tag (A–Z, Untagged last), with short names sorted A–Z inside each. The filter matches the tag or the name.
 
 ### US-2a-2: The Board's playlists
-- [ ] Each Library row has a large, labelled **Add to Board** / **On Board** toggle (D23). The palette has a smaller one.
+- [ ] The Library is a grid of cards, in as many columns as fit (D23). Each card has a large, labelled **Add** / **On Board** toggle. The palette has a smaller one.
 - [ ] Board items are stored as **scene** objects (`{id, playlistId, name}`), not bare IDs (D5).
 - [ ] The Board survives reload and logout. It is saved in this browser's `localStorage` only. `navigator.storage.persist()` is requested on the first save.
 - [ ] Library and palette rows show the song count (D23).

@@ -32,7 +32,7 @@ export function Board({
       <section className="board empty">
         <p>The Board is empty.</p>
         <p>
-          Use <strong>Add to Board</strong> in the <button className="link" onClick={onOpenLibrary}>Library</button> to put
+          Use <strong>☆ Add</strong> in the <button className="link" onClick={onOpenLibrary}>Library</button> to put
           playlists here.
         </p>
       </section>
