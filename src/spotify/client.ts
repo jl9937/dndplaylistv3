@@ -91,6 +91,8 @@ export async function request<T>(
   opts: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
   const url = pathOrUrl.startsWith('https://') ? pathOrUrl : API_BASE + pathOrUrl;
+  // The bearer token only ever goes to the Web API (for example Spotify's own `next` links).
+  if (!url.startsWith(API_BASE + '/')) throw new Error(`Refusing to send the Spotify token to ${scrubUrl(url)}`);
   const label = `${method} ${scrubUrl(url).replace(API_BASE, '')}`;
   let token = await getAccessToken();
   let refreshed = false;

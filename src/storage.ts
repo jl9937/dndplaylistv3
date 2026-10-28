@@ -1,5 +1,6 @@
-// Namespaced localStorage. Logout clears `auth.*` only; `prefs.*` and `sets.*` survive.
-export type StorageKey = `${'auth' | 'prefs' | 'sets'}.${string}`;
+// Namespaced localStorage. Logout clears `auth.*` and `cache.*`; `prefs.*` and `sets.*` survive.
+export type Namespace = 'auth' | 'cache' | 'prefs' | 'sets';
+export type StorageKey = `${Namespace}.${string}`;
 
 export function read<T>(key: StorageKey): T | null {
   try {
@@ -18,7 +19,7 @@ export function remove(key: StorageKey): void {
   localStorage.removeItem(key);
 }
 
-export function clearNamespace(ns: 'auth' | 'prefs' | 'sets'): void {
+export function clearNamespace(ns: Namespace): void {
   const doomed: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);

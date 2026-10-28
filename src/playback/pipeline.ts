@@ -41,6 +41,7 @@ export interface PlayerDevice {
   sendPlay(id: string, req: api.PlayRequest, signal: AbortSignal): Promise<void>;
   sendResume(id: string, signal: AbortSignal): Promise<void>;
   sendPause(id: string, signal: AbortSignal): Promise<void>;
+  sendNext(id: string, signal: AbortSignal): Promise<void>;
   /** Step 5: what the player is doing now. null means nothing is active. */
   observe(signal: AbortSignal): Promise<Observation | null>;
   /** Step 6: make the device active again before the single re-send. */
@@ -83,6 +84,7 @@ export function createRemoteDevice(pref: DevicePref, store: DeviceStore): Player
     sendPlay: (id, req, signal) => api.play(id, req, { signal, retry5xx: false }),
     sendResume: (id, signal) => api.resume(id, { signal, retry5xx: false }),
     sendPause: (id, signal) => api.pause(id, { signal }),
+    sendNext: (id, signal) => api.next(id, { signal }),
     observe: async (signal) => toObservation(await api.getPlaybackState({ signal })),
     wake: (id, signal) => api.transfer(id, { signal }),
     setShuffle: (id, on, signal) => api.setShuffle(id, on, { signal }),
@@ -101,6 +103,7 @@ export function guardDevice(d: PlayerDevice): PlayerDevice {
     sendPlay: (id, req, signal) => raceAbort(d.sendPlay(id, req, signal), signal),
     sendResume: (id, signal) => raceAbort(d.sendResume(id, signal), signal),
     sendPause: (id, signal) => raceAbort(d.sendPause(id, signal), signal),
+    sendNext: (id, signal) => raceAbort(d.sendNext(id, signal), signal),
     observe: (signal) => raceAbort(d.observe(signal), signal),
     wake: (id, signal) => raceAbort(d.wake(id, signal), signal),
     setShuffle: (id, on, signal) => raceAbort(d.setShuffle(id, on, signal), signal),
@@ -411,6 +414,22 @@ export function createPipeline(opts: PipelineOptions = {}) {
     return state;
   }
 
+  /**
+   * Skip to the next track. Doesn't touch the press state or supersede a press.
+   * Resolves with an error message, or null on success.
+   */
+  async function next(rawDevice: PlayerDevice): Promise<string | null> {
+    const device = guardDevice(rawDevice);
+    const signal = AbortSignal.timeout(DEADLINE_MS);
+    try {
+      await device.sendNext(await device.resolve(signal), signal);
+      return null;
+    } catch (e) {
+      const cause = signal.aborted ? new DeadlineExceeded() : e;
+      return failureReason(cause, device.label).reason;
+    }
+  }
+
   function subscribe(fn: () => void) {
     listeners.add(fn);
     return () => {
@@ -422,6 +441,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
     press,
     pause,
     resume,
+    next,
     getState: () => state,
     subscribe,
     /** Drop any run in progress (logout). */

@@ -45,7 +45,7 @@ export interface PlaybackState {
   shuffle_state: boolean;
   repeat_state: 'off' | 'track' | 'context';
   context: { uri: string; type: string } | null;
-  item: { id: string; name?: string } | null;
+  item: { id: string; name?: string; artists?: { name: string }[] } | null;
   timestamp?: number;
 }
 

@@ -284,6 +284,7 @@ async function doRefresh(staleToken: string): Promise<string> {
 
 export function logout(): void {
   clearNamespace('auth');
+  clearNamespace('cache');
   reloginNeeded = false;
   log('auth', 'logged out');
   notify();

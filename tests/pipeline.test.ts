@@ -39,6 +39,7 @@ function fakeDevice() {
     sendPause: vi.fn(async () => {
       if (current) current.playing = false;
     }),
+    sendNext: vi.fn(async () => {}),
     observe: vi.fn(async (): Promise<Observation | null> => {
       if (fake.mode === 'nothing' || !current) return null;
       if (fake.mode === 'normal' && current.playing) current.progress += 1000;

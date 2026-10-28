@@ -20,6 +20,16 @@ describe('request', () => {
     expect(formatLog()).not.toContain('W9LvT');
   });
 
+  it('never sends the token anywhere but the Web API', async () => {
+    seedTokens();
+    const fetch = stubFetch(() => json(200, {}));
+    await expect(request('GET', 'https://evil.example/v1/me')).rejects.toThrow('Refusing');
+    await expect(request('GET', 'https://api.spotify.com.evil.example/v1')).rejects.toThrow('Refusing');
+    expect(fetch).not.toHaveBeenCalled();
+    await request('GET', 'https://api.spotify.com/v1/me/playlists?offset=50&limit=50');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('parses a JSON body', async () => {
     seedTokens();
     stubFetch(() => json(200, { id: 'me' }));

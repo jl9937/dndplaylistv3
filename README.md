@@ -10,6 +10,7 @@ Status: **Milestone 1** built (log in, list playlists, click to play on the Spot
 - [docs/spec.md](docs/spec.md): product spec, architecture, milestones
 - [docs/milestone-1.md](docs/milestone-1.md): Milestone 1, with acceptance criteria and technical design
 - [docs/milestone-1b.md](docs/milestone-1b.md): Milestone 1b (in-browser player as automatic fallback)
+- [docs/milestone-2a.md](docs/milestone-2a.md): Milestone 2a (Board, session sets, tags, quick switch)
 
 ## Stack
 

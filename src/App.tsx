@@ -1,19 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { daysUntilRelogin, logout, type CallbackResult } from './auth/auth';
 import { RELOGIN_WARN_DAYS } from './config';
-import { log } from './diagnostics/log';
+import { loadLibrary, resetLibrary } from './library/libraryStore';
 import { deviceStore, loadDevicePref, saveDevicePref, type DevicePref } from './playback/devices';
+import { displayStatus, refreshNowPlaying, startNowPlaying } from './playback/nowPlaying';
 import { createRemoteDevice, pipeline } from './playback/pipeline';
-import { getMe, getMyPlaylists } from './spotify/api';
+import { boardOrder, currentSet, hasPlaylist, moveScene, moveSection, removeScene, syncNames, togglePlaylist } from './sets/sets';
+import { updateSets } from './sets/setsStore';
 import { trackCount, type Playlist } from './spotify/types';
 import { write } from './storage';
+import { Board } from './ui/Board';
 import { DebugPanel } from './ui/DebugPanel';
 import { DevicePicker } from './ui/DevicePicker';
-import { useAuthStatus, usePressState } from './ui/hooks';
+import { useAuthStatus, useLibrary, useNowPlaying, usePressState, useSets } from './ui/hooks';
+import { Library } from './ui/Library';
 import { LoginScreen } from './ui/LoginScreen';
+import { Palette } from './ui/Palette';
 import { PlayerBar } from './ui/PlayerBar';
-import { PlaylistList, type Library } from './ui/PlaylistList';
 import { ReadyCheck } from './ui/ReadyCheck';
+import { useRoute } from './ui/router';
+import { SetPicker } from './ui/SetPicker';
+import { useShortcuts } from './ui/shortcuts';
+import { itemStatus } from './ui/Status';
 
 export function App({ callback }: { callback: CallbackResult }) {
   const status = useAuthStatus();
@@ -35,31 +43,38 @@ export function App({ callback }: { callback: CallbackResult }) {
 }
 
 function Main({ onShowLog }: { onShowLog: () => void }) {
-  const [library, setLibrary] = useState<Library>({ status: 'loading' });
-  const [myId, setMyId] = useState<string | null>(null);
+  const library = useLibrary();
+  const sets = useSets();
+  const press = usePressState();
+  const now = useNowPlaying();
   const [pref, setPref] = useState<DevicePref | null>(loadDevicePref);
   const [showReady, setShowReady] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const press = usePressState();
   const deviceSelect = useRef<HTMLSelectElement>(null);
 
-  const load = useCallback(async () => {
-    setLibrary({ status: 'loading' });
-    try {
-      const [me, playlists] = await Promise.all([getMe(), getMyPlaylists()]);
-      setMyId(me.id);
-      setLibrary({ status: 'ok', playlists });
-      log('app', `library loaded: ${playlists.length} playlists`);
-    } catch (e) {
-      setLibrary({ status: 'error', message: e instanceof Error ? e.message : String(e) });
-    }
-  }, []);
+  const set = currentSet(sets);
+  const [route, go] = useRoute(set.scenes.length > 0 ? 'board' : 'library');
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadLibrary();
+    return startNowPlaying();
+  }, []);
+
+  // Keep cached scene names in step with Spotify (renames, retags).
+  useEffect(() => {
+    if (library.status !== 'ok') return;
+    const names = new Map(library.playlists.map((p) => [p.id, p.name]));
+    updateSets((d) => syncNames(d, names));
+  }, [library]);
 
   const device = useMemo(() => (pref ? createRemoteDevice(pref, deviceStore) : null), [pref]);
+  const playlists = library.status === 'ok' ? library.playlists : [];
+  const byId = library.status === 'ok' ? library.byId : new Map<string, Playlist>();
+
+  const statusOf = (playlistId: string) => itemStatus(playlistId, press, displayStatus(playlistId, press, now));
+  const inSet = (playlistId: string) => hasPlaylist(set, playlistId);
+  const toggleSet = (p: Playlist) => updateSets((d) => togglePlaylist(d, p));
 
   const choosePref = (p: DevicePref) => {
     saveDevicePref(p);
@@ -73,7 +88,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     void deviceStore.refresh().catch(() => {});
   };
 
-  const onPress = (p: Playlist) => {
+  const play = (p: Playlist) => {
     if (!device) {
       setNotice('Choose where the music plays first.');
       chooseDevice();
@@ -84,56 +99,105 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     void pipeline.press({ id: p.id, total: trackCount(p) }, device);
   };
 
+  const togglePause = () => {
+    if (!device) return;
+    void (now.state?.is_playing ? pipeline.pause(device) : pipeline.resume(device));
+  };
+
+  const next = async () => {
+    if (!device) return;
+    const error = await pipeline.next(device);
+    setNotice(error);
+    setTimeout(() => void refreshNowPlaying(), 600);
+  };
+
+  const playTile = (n: number) => {
+    const scene = boardOrder(set)[n - 1];
+    const p = scene && byId.get(scene.playlistId);
+    if (p) play(p);
+  };
+
+  useShortcuts(
+    { openPalette: () => library.status === 'ok' && setShowPalette(true), playTile, togglePause },
+    !showPalette,
+  );
+
   const onLogout = () => {
     pipeline.reset();
     deviceStore.clear();
+    resetLibrary();
     logout();
   };
 
-  const playlists = library.status === 'ok' ? library.playlists : [];
-  const currentName =
-    press.status !== 'idle' ? (playlists.find((p) => p.id === press.playlistId)?.name ?? null) : null;
   const days = daysUntilRelogin();
 
   return (
     <div className="app">
       <header className="top">
         <h1>D&amp;D Playlist Manager</h1>
-        {days !== null && days <= RELOGIN_WARN_DAYS && (
-          <span className="warn">Re-login needed in {days} days</span>
-        )}
-        <nav>
+        <nav className="tabs" aria-label="Views">
+          <a href="#/board" aria-current={route === 'board' ? 'page' : undefined}>
+            Board
+          </a>
+          <a href="#/library" aria-current={route === 'library' ? 'page' : undefined}>
+            Library
+          </a>
+        </nav>
+        {days !== null && days <= RELOGIN_WARN_DAYS && <span className="warn">Re-login needed in {days} days</span>}
+        <nav className="actions">
+          <button onClick={() => setShowPalette(true)} disabled={library.status !== 'ok'} title="Cmd+K or /">
+            All playlists <kbd>⌘K</kbd>
+          </button>
           <button onClick={() => setShowReady((v) => !v)} disabled={library.status !== 'ok'}>
             Ready check
           </button>
-          <button className="link" onClick={onShowLog}>Log</button>
-          <button className="link" onClick={onLogout}>Log out</button>
+          <button className="link" onClick={onShowLog}>
+            Log
+          </button>
+          <button className="link" onClick={onLogout}>
+            Log out
+          </button>
         </nav>
       </header>
 
-      <DevicePicker ref={deviceSelect} pref={pref} onChange={choosePref} />
+      <div className="toolbar">
+        <DevicePicker ref={deviceSelect} pref={pref} onChange={choosePref} />
+        <SetPicker doc={sets} />
+      </div>
       {notice && <p className="notice">{notice}</p>}
 
       {showReady && library.status === 'ok' && (
         <ReadyCheck playlists={playlists} pref={pref} onClose={() => setShowReady(false)} />
       )}
 
-      <PlayerBar
-        press={press}
-        playlistName={currentName}
-        canControl={!!device}
-        onPause={() => device && void pipeline.pause(device)}
-        onResume={() => device && void pipeline.resume(device)}
-      />
+      <PlayerBar press={press} now={now} byId={byId} canControl={!!device} onToggle={togglePause} onNext={next} />
 
-      <PlaylistList
-        library={library}
-        myId={myId}
-        press={press}
-        onPress={onPress}
-        onRetry={load}
-        onChooseDevice={chooseDevice}
-      />
+      {route === 'board' && library.status === 'ok' ? (
+        <Board
+          set={set}
+          byId={byId}
+          statusOf={statusOf}
+          onPlay={play}
+          onRemove={(id) => updateSets((d) => removeScene(d, id))}
+          onMoveScene={(from, to) => updateSets((d) => moveScene(d, from, to))}
+          onMoveSection={(key, dir) => updateSets((d) => moveSection(d, key, dir))}
+          onOpenLibrary={() => go('library')}
+        />
+      ) : (
+        <Library
+          library={library}
+          statusOf={statusOf}
+          inSet={inSet}
+          onPlay={play}
+          onToggleSet={toggleSet}
+          onRetry={loadLibrary}
+          onChooseDevice={chooseDevice}
+        />
+      )}
+
+      {showPalette && (
+        <Palette playlists={playlists} inSet={inSet} onPlay={play} onToggleSet={toggleSet} onClose={() => setShowPalette(false)} />
+      )}
     </div>
   );
 }

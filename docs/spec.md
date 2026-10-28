@@ -92,6 +92,7 @@ Detailed in [milestone-1b.md](milestone-1b.md). Split out of Milestone 1 (D16).
 - Autoplay handling and the single-instance guard.
 
 ### Milestone 2: Board, session sets, tags from names
+Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md).
 - **Tags from playlist names:** parse the tag already in each playlist name (for example a town, mood or scenario prefix) with a configurable rule. Show the **short name** with the tag removed, and **group the Library by tag**. Display only: Spotify names are not changed. See [§13.1](#131-tags-from-playlist-names).
 - Mark playlists as part of a session set from the Library view (star/checkbox).
 - Board view: the set's playlists as large tiles in my chosen order (drag to reorder).
@@ -185,6 +186,11 @@ Detailed in [milestone-1b.md](milestone-1b.md). Split out of Milestone 1 (D16).
 | D15 | When a playlist runs out | **Repeat the playlist.** Spotify Autoplay is turned off in the desktop app as a one-time setup step. | After confirmation the app sets `repeat=context` alongside shuffle (§12.4 step 8). The Ready check warns if repeat is off. A long scene loops its mood instead of falling silent or drifting into Autoplay's picks. |
 | D16 | Milestone 1 scope | **Split.** Milestone 1 is remote control only (desktop app, phone, any listed device). The in-browser player and everything that exists only for it moves to **Milestone 1b**, straight after. | A working, soak-tested main path sooner. The soak test shows whether the desktop app path has its own silent failures before fallback logic is added. Until 1b, a missing desktop app gives a clear "Open Spotify" failure, not an automatic fallback. |
 | D17 | Dev environment | **Nix flake** (`flake.nix`, with direnv via `.envrc`) pins Node. Python, if ever needed, uses **uv** from the same flake. | Jim's preference. Any Node 20.19+ also works, so CI and Cloudflare builds don't need Nix. |
+| D18 | Milestone 2 slicing | **2a, then 2b.** 2a is the Board workflow: tags, session sets, Board, palette, shortcuts, now playing, routing, export. 2b is the compact strip and the floating-window spike. | The main session workflow arrives sooner. Detailed in [milestone-2a.md](milestone-2a.md). |
+| D19 | Session set size | **About 9.** Keys `1`–`9` follow the Board's display order. More are allowed, with a note. | Every tile gets a key and fits on one screen. |
+| D20 | Board layout | **Sections by tag.** Sections are ordered by first addition and can be moved up or down. Tiles are dragged within a section. | Matches how Jim names playlists (`Town: …`, `Xanathar: …`). |
+| D21 | Now playing | Track and artist, plus **Next**. No volume slider, no cover art. | Volume is set in the Spotify app; the API's volume command is rate-limited and coarse. |
+| D22 | Order after Milestone 1 | **2a before 1b**, and before the Milestone 1 soak test, at Jim's request (2026-10-28). | Milestone 1 already works in real use. 1b and the soak test follow 2a. |
 | D12 | Compact mode | **A then B.** (A) A button switches to a docked narrow strip: compact layout, and the window resizes and moves itself to the screen edge. (B) An always-on-top floating strip using Document Picture-in-Picture (Chrome/Edge), tested early in Milestone 2. | A is the reliable baseline. B is the target experience if the spike passes. See [§13.5](#135-compact-mode). |
 
 ### Open questions

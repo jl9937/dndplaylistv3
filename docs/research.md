@@ -109,6 +109,24 @@ A backend (for example a Cloudflare Worker holding tokens in an HttpOnly cookie)
 
 ---
 
+### 4.1 Security review (2026-10-28)
+An independent, non-destructive review of deployed build `6e746e5`: the live site, the code, dependencies, the GitHub repo and the deploy chain. **Nothing Critical or High.** The live site exposes no files or source maps, the strict CSP holds, PKCE and the state check are correct, npm audit finds 0 vulnerabilities, and the git history has no secrets. The main risk is the accounts that can push or deploy (GitHub, Cloudflare, and Google if used to sign in to them), not the app.
+
+| Finding | Severity | Status |
+|---|---|---|
+| `allowScripts` in package.json is advisory only; install scripts could still run in the Cloudflare build | Medium | **Fixed:** `.npmrc` sets `ignore-scripts=true`; `.node-version` pins Node 24 |
+| Pushing to `main` deploys with no gate; the local `gh` token has broad `repo` scope | Low | Account settings: Jim's call (a ruleset on `main`; fine-grained tokens for agents) |
+| Dependabot alerts and security updates disabled | Low | Repo setting: Jim's call |
+| The client would attach the bearer token to any `https://` URL | Low | **Fixed:** only `https://api.spotify.com/v1/…` |
+| No `Permissions-Policy`, COOP or HSTS headers | Info | **Fixed** in `_headers` |
+| `?error=` clears a pending login without a state check | Info | Accepted: nuisance only |
+| Work email in public commit metadata | Info | Jim's call (GitHub noreply address) |
+
+Blast radius:
+- **GitHub account:** the largest impact. It can push malicious JS that is auto-deployed, and it reaches other orgs' repos.
+- **Cloudflare account:** the same malicious deploy.
+- **A stolen browser session:** about 6 months of private-playlist read access and playback control, and nothing else. The app has no route into Google.
+
 ## 5. Q3: Which framework?
 
 Goals: as simple as possible, quick to develop, flexible enough for later features (session sets, quick-switch board, maybe crossfade and keyboard shortcuts).

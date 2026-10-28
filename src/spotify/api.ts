@@ -51,6 +51,10 @@ export async function pause(deviceId: string, opts: Opts = {}): Promise<void> {
   await request('PUT', `/me/player/pause?${q(deviceId)}`, opts);
 }
 
+export async function next(deviceId: string, opts: Opts = {}): Promise<void> {
+  await request('POST', `/me/player/next?${q(deviceId)}`, opts);
+}
+
 /** Make the device active without starting playback (the wake fallback, spec §12.4 step 6). */
 export async function transfer(deviceId: string, opts: Opts = {}): Promise<void> {
   await request('PUT', '/me/player', { ...opts, body: { device_ids: [deviceId], play: false } });
