@@ -21,8 +21,8 @@ export const WAKE_SETTLE_MS = 1_000;
 export const LATE_WATCH_MS = 10_000;
 export const LATE_POLL_MS = 2_000;
 /** Soft transitions (Milestone 3): fade out, switch, fade in. */
-export const FADE_OUT_MS = 1_200;
-export const FADE_IN_MS = 1_500;
+export const FADE_OUT_MS = 3_000;
+export const FADE_IN_MS = 4_000;
 
 // ---------- the device interface (1b adds an SDK implementation) ----------
 
@@ -103,7 +103,7 @@ export function createRemoteDevice(pref: DevicePref, store: DeviceStore): Player
     setShuffle: (id, on, signal) => api.setShuffle(id, on, { signal }),
     setRepeatContext: (id, signal) => api.setRepeat(id, 'context', { signal }),
     setVolume: (id, percent, signal) => api.setVolume(id, percent, { signal }),
-    fadeSteps: 3,
+    fadeSteps: 5,
   };
 }
 
