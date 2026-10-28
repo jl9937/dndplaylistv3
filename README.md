@@ -96,7 +96,7 @@ For anything the names can't express. `tagRules` add a tag to every playlist who
 
 ```json
 {
-  "tagRules": [{ "tag": "Theme", "contains": "Theme - ", "removeFromName": true }],
+  "tagRules": [{ "tag": "Soundtrack", "contains": "OST", "removeFromName": false }],
   "hide": [{ "contains": "For DnD Sorting" }]
 }
 ```
