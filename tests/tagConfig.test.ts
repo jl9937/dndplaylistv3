@@ -79,3 +79,25 @@ describe('bad rules', () => {
     expect(parseTagConfig(undefined)).toEqual({ config: { tagRules: [], hide: [] }, errors: [] });
   });
 });
+
+describe('[Tag] markers (D25)', () => {
+  const d = describer({});
+
+  it('adds each [Tag] as an extra tag after the prefix tag, and hides it from the name', () => {
+    expect(d('Battle: Blades in the Dark [Theme]')).toEqual({ tags: ['Battle', 'Theme'], shortName: 'Blades in the Dark', hidden: false });
+    expect(d('Battle: [Theme] Duel [Heist]')).toEqual({ tags: ['Battle', 'Theme', 'Heist'], shortName: 'Duel', hidden: false });
+  });
+
+  it('tags a name with no prefix', () => {
+    expect(d('Duskvol [Theme]')).toEqual({ tags: ['Theme'], shortName: 'Duskvol', hidden: false });
+  });
+
+  it('ignores case when merging, and keeps a name that is only markers', () => {
+    expect(d('Theme: Duskvol [theme]').tags).toEqual(['Theme']);
+    expect(d('[Theme]').shortName).toBe('[Theme]');
+  });
+
+  it('ignores empty brackets', () => {
+    expect(d('Town: Market []')).toEqual({ tags: ['Town'], shortName: 'Market []', hidden: false });
+  });
+});

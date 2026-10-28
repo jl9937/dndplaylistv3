@@ -123,7 +123,7 @@ export function Library({
           <button className="link" onClick={() => onShowUntagged(!showUntagged)}>
             {showUntagged ? `Hide ${untagged} untagged` : `Show ${untagged} untagged`}
           </button>{' '}
-          (no <code>Tag:</code> prefix and no rule in <code>config/tags.json</code>)
+          (no <code>Tag:</code> or <code>[Tag]</code> in the name)
         </p>
       )}
     </section>

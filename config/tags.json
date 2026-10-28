@@ -1,7 +1,12 @@
 {
-  "$comment": "Extra tags and hide rules, applied on top of the 'Tag: Name' convention. Matching ignores case. See README → Tag rules. Changes take effect after a push deploys.",
+  "$comment": "Rules for what the naming conventions can't express. Names already give tags: 'Tag: Name' (main group) and '[Tag]' anywhere (extra groups). Matching ignores case. See README \u2192 Tags. Changes take effect after a push deploys.",
   "tagRules": [
-    { "tag": "Theme", "contains": "Theme - ", "removeFromName": true }
+    {
+      "$comment": "Transitional: remove once 'Theme - X' playlists are renamed to use [Theme].",
+      "tag": "Theme",
+      "contains": "Theme - ",
+      "removeFromName": true
+    }
   ],
   "hide": []
 }

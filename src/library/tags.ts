@@ -15,11 +15,21 @@ export const UNTAGGED_LABEL = 'Untagged';
 
 
 export interface Described {
-  /** Every tag, primary first: the name's own tag, then matching rules in config order. */
+  /** Every tag, primary first: the `Tag:` prefix, then `[Tag]` markers, then config rules. */
   tags: string[];
   shortName: string;
   /** Matched a hide rule: left out of the Library and palette. */
   hidden: boolean;
+}
+
+const MARKER = /\[([^[\]]+)\]/g;
+
+/** `Blades in the Dark [Theme] [Heist]` → tags Theme, Heist; rest "Blades in the Dark". */
+export function extractMarkers(shortName: string): { tags: string[]; rest: string } {
+  const tags = [...shortName.matchAll(MARKER)].map((m) => m[1].trim()).filter(Boolean);
+  if (tags.length === 0) return { tags, rest: shortName };
+  const rest = shortName.replace(MARKER, ' ').replace(/\s{2,}/g, ' ').trim();
+  return { tags, rest: rest || shortName }; // a name that is only markers keeps its text
 }
 
 /** Build a describer for a config. The app uses `describePlaylist` (config/tags.json). */
@@ -29,11 +39,18 @@ export function createDescriber(config: TagConfig) {
     let d = cache.get(name);
     if (d) return d;
     const { tag, shortName: parsed } = parsePlaylistName(name);
-    const tags = tag ? [tag] : [];
-    let shortName = parsed;
+    const tags: string[] = [];
+    const add = (t: string) => {
+      if (!tags.some((x) => tagKey(x) === tagKey(t))) tags.push(t);
+    };
+    if (tag) add(tag);
+    // `[Theme]` anywhere in the name: an extra tag, hidden from the displayed name (D25).
+    const { tags: marked, rest } = extractMarkers(parsed);
+    marked.forEach(add);
+    let shortName = rest;
     for (const rule of config.tagRules) {
       if (!rule.test(name)) continue;
-      if (!tags.some((t) => tagKey(t) === tagKey(rule.tag))) tags.push(rule.tag);
+      add(rule.tag);
       shortName = rule.strip(shortName);
     }
     d = { tags, shortName, hidden: config.hide.some((h) => h.test(name)) };

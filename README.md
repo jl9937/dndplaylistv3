@@ -76,27 +76,33 @@ Open <http://127.0.0.1:5173/>. The port is fixed (`strictPort`): if 5173 is busy
 
 Other scripts: `npm test` (unit tests), `npm run typecheck`, `npm run build`, and `npm run deploy` (manual deploy with Wrangler; normally Cloudflare deploys on push).
 
-## Tag rules
+## Tags
 
-Playlists are grouped by the tag before the first colon in their name (`Town: Desert Town` → **Town**). [config/tags.json](config/tags.json) adds more:
+Tags come from playlist names in Spotify. Nothing is ever renamed by this app.
+
+| Name in Spotify | Tags | Shown as |
+|---|---|---|
+| `Town: Desert Town` | **Town** | Desert Town |
+| `Battle: Blades in the Dark [Theme]` | **Battle**, **Theme** | Blades in the Dark |
+| `Duskvol [Theme] [Heist]` | **Theme**, **Heist** | Duskvol |
+
+- **`Tag:` at the start** sets the main group. Only the first colon counts, so `Setting: Hell: Lower Circle` keeps "Hell: Lower Circle".
+- **`[Tag]` anywhere** adds an extra group, and is hidden from the displayed name.
+- In the Library, a playlist appears under each of its tags. On the Board it goes in one section: its first tag.
+- Tags ignore case. Playlists with no tag are hidden unless you click **Show N untagged**.
+
+### config/tags.json
+For anything the names can't express. `tagRules` add a tag to every playlist whose name matches; `hide` keeps matching playlists out of the Library and the palette:
 
 ```json
 {
-  "tagRules": [
-    { "tag": "Theme", "contains": "Theme - ", "removeFromName": true }
-  ],
-  "hide": [
-    { "contains": "For DnD Sorting" }
-  ]
+  "tagRules": [{ "tag": "Theme", "contains": "Theme - ", "removeFromName": true }],
+  "hide": [{ "contains": "For DnD Sorting" }]
 }
 ```
 
-- **`tagRules`** add a tag to every playlist whose name matches. A playlist keeps its own `Tag:` too, and appears under each of its tags in the Library. On the Board it goes in one section: its own tag first, otherwise the first rule that matches.
-- **`hide`** keeps matching playlists out of the Library and the palette. A playlist already on the Board stays there.
-- Each rule matches with exactly one of `contains`, `startsWith` or `regex`. Matching ignores case.
-- `removeFromName: true` removes the matched text from the displayed name, so `Theme - Duskvol` shows as **Duskvol**. Names in Spotify never change.
-- A broken rule is skipped and reported in the Log, and the rest still apply. `npm test` checks the file.
-- Changes take effect once they're pushed and deployed, then the app window is reloaded.
+- Each rule matches with exactly one of `contains`, `startsWith` or `regex`, ignoring case. `removeFromName: true` drops the matched text from the displayed name.
+- A broken rule is skipped and noted in the Log; `npm test` checks the file. Changes take effect once pushed, deployed and the app window reloaded.
 
 ## Using it
 
