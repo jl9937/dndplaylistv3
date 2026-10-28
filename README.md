@@ -13,7 +13,7 @@ Status: **Milestone 1** built (log in, list playlists, click to play on the Spot
 
 ## Stack
 
-Static single-page app: Vite + React + TypeScript, plain CSS, Vitest. Spotify Authorization Code + PKCE in the browser (no backend, no client secret). Hosted free on Cloudflare Pages.
+Static single-page app: Vite + React + TypeScript, plain CSS, Vitest. Spotify Authorization Code + PKCE in the browser (no backend, no client secret). Hosted free on Cloudflare (Workers static assets) at <https://dndplaylistv3.jim-lumsden.workers.dev/>.
 
 ## One-time setup
 
@@ -21,7 +21,7 @@ Static single-page app: Vite + React + TypeScript, plain CSS, Vitest. Spotify Au
 1. In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), create an app. Tick **Web API** (and **Web Playback SDK**, ready for Milestone 1b).
 2. Add both redirect URIs, exactly:
    - `http://127.0.0.1:5173/` (local dev; Spotify rejects `localhost`)
-   - your Cloudflare Pages URL, for example `https://dnd-playlist-manager.pages.dev/`
+   - the production URL, `https://dndplaylistv3.jim-lumsden.workers.dev/`
 3. Under **User Management**, add the email of the Spotify account you log in with.
 4. Copy the **Client ID**. It is public. Do not create or use a client secret.
 5. Both the developer account and the listening account need full Spotify Premium.
@@ -30,11 +30,13 @@ Static single-page app: Vite + React + TypeScript, plain CSS, Vitest. Spotify Au
 - Spotify desktop app: **Settings → Autoplay → off**, so Spotify never adds its own tracks.
 - Chrome or Edge: add the production URL under **Settings → Performance → Always keep these sites active**, so Memory Saver never discards the app window.
 
-### 3. Cloudflare Pages
-In the Cloudflare dashboard: **Workers & Pages → Create → Pages → Connect to Git**, and pick this repo.
+### 3. Cloudflare
+The app deploys as a Worker with static assets only (no Worker script). [wrangler.jsonc](wrangler.jsonc) holds the config. In the Cloudflare dashboard: **Workers & Pages → Create → Import a repository**, and pick this repo. Then, under the Worker's **Settings → Build**:
 - Build command: `npm ci && npm test && npm run build`
-- Build output directory: `dist`
-- Environment variable: `VITE_SPOTIFY_CLIENT_ID` = your Client ID
+- Deploy command: `npx wrangler deploy`
+- Build variable: `VITE_SPOTIFY_CLIENT_ID` = your Client ID. It must be a build variable, not a runtime one, because Vite bakes it into the bundle.
+
+Leave **Cloudflare Access** off for the `workers.dev` URL (**Settings → Domains & Routes**). It adds a second login that can expire mid-session.
 
 Every push to `main` deploys to production. Branches and pull requests get preview URLs, which can't log in (they aren't registered redirect URIs). Security headers and the CSP come from [public/_headers](public/_headers) and apply in production only.
 
@@ -70,7 +72,7 @@ npm run dev
 
 Open <http://127.0.0.1:5173/>. The port is fixed (`strictPort`): if 5173 is busy, the server stops rather than moving, because a different port would break login.
 
-Other scripts: `npm test` (unit tests), `npm run typecheck`, `npm run build`.
+Other scripts: `npm test` (unit tests), `npm run typecheck`, `npm run build`, and `npm run deploy` (manual deploy with Wrangler; normally Cloudflare deploys on push).
 
 ## Using it
 

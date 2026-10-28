@@ -27,14 +27,14 @@ This milestone proves the main path first: PKCE under the 2025 redirect rules, S
 
 ## Prerequisites (one-time, manual, done by Jim)
 
-1. Create a free Cloudflare account and a Pages project connected to the GitHub repo (see Deploy below). Note the exact `*.pages.dev` subdomain it assigns.
+1. Create a free Cloudflare account and a Worker connected to the GitHub repo (see Deploy below). Done: `https://dndplaylistv3.jim-lumsden.workers.dev/`.
 2. In the [Spotify developer dashboard](https://developer.spotify.com/dashboard), create an app.
    - APIs: **Web API**. Add **Web Playback SDK** now too, ready for 1b.
    - Redirect URIs:
      - `http://127.0.0.1:5173/` (local dev). Check that it saved as `127.0.0.1`, not `localhost`.
-     - The Cloudflare Pages production URL (D7), for example `https://dnd-playlist-manager.pages.dev/`. It must match exactly.
+     - The production URL (D7), `https://dndplaylistv3.jim-lumsden.workers.dev/`. It must match exactly, including the trailing slash.
 3. Under **User Management**, add the email of the Spotify account you will log in with.
-4. Copy the **Client ID**. It is public. It goes in `.env` as `VITE_SPOTIFY_CLIENT_ID` locally, and in the Cloudflare Pages build environment for deploys. There is no client secret; do not create or use one.
+4. Copy the **Client ID**. It is public. It goes in `.env` as `VITE_SPOTIFY_CLIENT_ID` locally, and in the Cloudflare build environment for deploys. There is no client secret; do not create or use one.
 5. Make sure the developer account and the listening account have full Spotify Premium.
 6. In the **Spotify desktop app**, turn **Autoplay** off (Settings → Autoplay), so that Spotify never adds its own tracks (D15).
 7. In Chrome or Edge, add the production URL to **Settings → Performance → "Always keep these sites active"**, so Memory Saver never discards the app window.
@@ -112,7 +112,7 @@ index.html
 public/
   manifest.webmanifest     name, icons, display: standalone, theme colours (D11)
   icons/                   app icons
-  _headers                 CSP and security headers (Cloudflare Pages)
+  _headers                 CSP and security headers (Cloudflare static assets)
 vite.config.ts             127.0.0.1:5173, strictPort
 src/
   main.tsx                 handles the ?code callback BEFORE rendering React
@@ -160,7 +160,7 @@ The pipeline takes the device as an interface (`play`, `confirm`), so 1b can add
 - `vite preview` (port 4173) is not a registered redirect URI. Use `npm run dev` for login testing, or also register `http://127.0.0.1:4173/` if needed.
 
 ### Content Security Policy
-Delivered as real HTTP headers through `public/_headers`, which Cloudflare Pages applies **only in production**. The dev server runs without CSP: it needs inline scripts and styles and a websocket.
+Delivered as real HTTP headers through `public/_headers`, which Cloudflare applies **only in production** (Workers static assets read `dist/_headers`). The dev server runs without CSP: it needs inline scripts and styles and a websocket.
 ```
 default-src 'self';
 script-src 'self';
@@ -175,10 +175,12 @@ form-action 'self';
 Plus the headers `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`. Milestone 1b adds `https://sdk.scdn.co` to `script-src` and `frame-src`.
 
 ### Deploy (D9)
-- **Cloudflare Pages Git integration:** connect the GitHub repo once in the Cloudflare dashboard. Every push to `main` deploys to production. Other branches and pull requests get preview URLs.
+- **Cloudflare Workers Builds (Git integration):** connect the GitHub repo once in the Cloudflare dashboard. Every push to `main` deploys to production. Other branches and pull requests get preview URLs.
   - Build command: `npm ci && npm test && npm run build`, so failing tests stop the deploy.
-  - Output directory: `dist`.
-  - Environment variable: `VITE_SPOTIFY_CLIENT_ID` (public).
+  - Deploy command: `npx wrangler deploy`. It reads `wrangler.jsonc`, which serves `dist/` as static assets with single-page-app fallback. `wrangler` is pinned in `package.json`.
+  - Build variable: `VITE_SPOTIFY_CLIENT_ID` (public). It must be a **build** variable, because Vite bakes it in at build time.
+- **Install scripts:** `package.json` denies the install scripts of `esbuild`, `fsevents` and `workerd` (`allowScripts`). Static-asset deploys don't need them.
+- **Cloudflare Access stays off** on the `workers.dev` URL (D9).
 - **No deploy credentials exist anywhere:** no Cloudflare token is stored in GitHub.
 - **Preview URLs can't log in:** they aren't registered redirect URIs, which is intentional. Test login locally or in production.
 - **GitHub Actions** runs type-check and tests on every push and pull request. It has `permissions: contents: read` only, and actions are pinned to commit SHAs.
@@ -212,7 +214,7 @@ Plus the headers `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nos
     - At least one gap of **30+ minutes with the Spotify desktop app minimised and paused**. This is the condition most likely behind the earlier builds' silent failures (D3).
   - (c) **Phone:** 10 presses, each after the phone's Spotify app has been in the background for 5+ minutes.
   - **Pass:** 0 silent failures; 2 or fewer false Failed (Failed shown while music plays) in total; 95% of presses in (a) confirmed within 3 s.
-- [ ] Deployed to Cloudflare Pages (D7) and working end-to-end there, with no CSP violations in the console.
+- [ ] Deployed to Cloudflare (D7) and working end-to-end there, with no CSP violations in the console.
 - [ ] Chrome or Edge offers **Install as app**. The installed app opens in its own window and logs in fine there.
 - [ ] `README.md` explains setup: Cloudflare and Spotify dashboard steps, `.env`, `npm run dev`, deploy, Autoplay off, and the Memory Saver exclusion.
 - [ ] No client secret, token or personal data committed.

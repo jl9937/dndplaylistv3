@@ -64,7 +64,7 @@ The app can be a **pure static site**. PKCE works without a server, so there is 
 | Netlify | Yes (limited build minutes) | Yes | Yes, `_headers` / `netlify.toml` | Git integration | Fine alternative. |
 | Vercel | Yes (Hobby, non-commercial) | Yes | Yes, `vercel.json` | Git integration | Skews toward Next.js. Overkill here. |
 
-**Original recommendation: GitHub Pages**, deployed by a GitHub Actions workflow from `main`. **Revised after review: Cloudflare Pages (decided, spec D7).** The reason is below.
+**Original recommendation: GitHub Pages**, deployed by a GitHub Actions workflow from `main`. **Revised after review: Cloudflare (decided, spec D7)**, deployed as Workers static assets rather than a Pages project. The reason is below.
 - **Decided:** a public repo on Jim's personal GitHub account.
 - **Shared-origin problem:** every project site on an account is served from the *same origin*, `https://<user>.github.io`. `localStorage`, IndexedDB and service-worker scope are per origin. So **any other Pages site on the account can read this app's refresh token and data**, and a user-site repo could register a root service worker over this app's path. This app's own CSP can't prevent that. GitHub Pages is only safe if no other Pages site on the account runs untrusted or third-party code, now or in future.
 - **Alternative: Cloudflare Pages** (`dnd-playlist-manager.pages.dev`). Its own origin, real HTTP security headers through `_headers` (so a full CSP including `frame-ancestors`), £0, and it deploys from the same GitHub repo. The cost is one extra free account.

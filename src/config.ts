@@ -11,7 +11,7 @@ export const SCOPES = [
   'user-modify-playback-state',
 ];
 
-/** The app root is the redirect URI: http://127.0.0.1:5173/ in dev, the pages.dev URL in production. */
+/** The app root is the redirect URI: http://127.0.0.1:5173/ in dev, the workers.dev URL in production. */
 export function redirectUri(): string {
   return location.origin + import.meta.env.BASE_URL;
 }
