@@ -348,13 +348,12 @@ describe('play pipeline', () => {
 describe('soft transitions', () => {
   const fading = () => createPipeline({ fadeEnabled: () => true });
 
-  it('fades out what is playing, switches, then fades back to the same volume', async () => {
+  it('fades out, switches, then restores full volume once the new playlist is seen (no fade in)', async () => {
     const { device, fake } = fakeDevice();
     fake.start('OLD');
     const order: string[] = [];
     vi.mocked(device.setVolume!).mockImplementation(async (_id, v) => {
       fake.volume = Math.round(v);
-      fake.volumes.push(Math.round(v));
       order.push(`vol ${Math.round(v)}`);
     });
     const realPlay = device.sendPlay;
@@ -362,10 +361,16 @@ describe('soft transitions', () => {
       order.push('play');
       return realPlay(id, req, signal);
     });
+    const realObserve = device.observe;
+    device.observe = vi.fn(async (signal) => {
+      const o = await realObserve(signal);
+      if (o?.playlistId === 'NEW' && !order.includes('seen NEW')) order.push('seen NEW');
+      return o;
+    });
     const p = fading().press({ id: 'NEW' }, device);
     await vi.advanceTimersByTimeAsync(8_000);
     expect((await p).status).toBe('playing');
-    expect(order).toEqual(['vol 53', 'vol 27', 'vol 0', 'play', 'vol 27', 'vol 53', 'vol 80', 'vol 80']);
+    expect(order).toEqual(['vol 53', 'vol 27', 'vol 0', 'play', 'seen NEW', 'vol 80']);
     expect(fake.volume).toBe(80);
   });
 

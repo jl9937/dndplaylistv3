@@ -20,9 +20,8 @@ export const RETRY_DELAYS_MS = [250, 750];
 export const WAKE_SETTLE_MS = 1_000;
 export const LATE_WATCH_MS = 10_000;
 export const LATE_POLL_MS = 2_000;
-/** Soft transitions (Milestone 3): fade out, switch, fade in. */
+/** Soft transitions (Milestone 3): fade out, then the new playlist starts at full volume. */
 export const FADE_OUT_MS = 3_000;
-export const FADE_IN_MS = 4_000;
 
 // ---------- the device interface (1b adds an SDK implementation) ----------
 
@@ -204,6 +203,8 @@ export function createPipeline(opts: PipelineOptions = {}) {
     until: number,
     signal: AbortSignal,
     pollEveryMs?: number,
+    /** Called once, the first time our playlist is seen on our device (even before it advances). */
+    onOurs?: () => void,
   ): Promise<{ ok: true; obs: Observation } | { ok: false; last: Observation | null | undefined }> {
     const matches = (o: Observation | null | undefined): o is Observation =>
       !!o && o.deviceId === id && o.isPlaying && (playlistId === null || o.playlistId === playlistId);
@@ -222,6 +223,10 @@ export function createPipeline(opts: PipelineOptions = {}) {
         continue;
       }
       last = obs;
+      if (onOurs && obs && obs.deviceId === id && obs.playlistId === playlistId) {
+        onOurs();
+        onOurs = undefined;
+      }
       if (matches(obs) && matches(prev)) {
         const advanced = obs.trackId !== prev.trackId || (obs.progressMs ?? 0) > (prev.progressMs ?? 0);
         if (advanced) return { ok: true, obs };
@@ -262,14 +267,17 @@ export function createPipeline(opts: PipelineOptions = {}) {
     await ramp(device, id, here.volume, 0, FADE_OUT_MS, run.signal);
   }
 
-  /** After confirmation: fade back up to the volume before the switch. */
-  async function fadeIn(device: PlayerDevice, id: string, signal: AbortSignal) {
-    const t = transition;
-    if (!t || t.deviceId !== id || !device.setVolume) return;
-    await ramp(device, id, 0, t.target, FADE_IN_MS, signal);
-    // Spotify doesn't promise command order: assert the final volume once more.
-    await device.setVolume(id, t.target, signal);
-    if (transition === t) transition = null;
+  /**
+   * The new playlist comes in at full volume, with no fade in (D26). We wait until it's seen
+   * playing: Spotify doesn't promise command order, and restoring the volume earlier could
+   * blast the old track for a moment.
+   */
+  function restoreOnSwitch(id: string, run: ReturnType<typeof begin>) {
+    return () => {
+      const t = transition;
+      if (!t || t.deviceId !== id || !run.current()) return;
+      restoreVolume('new playlist started');
+    };
   }
 
   /** Step 8 (D14, D15): shuffle on, repeat the playlist. Only after confirmation. */
@@ -382,7 +390,16 @@ export function createPipeline(opts: PipelineOptions = {}) {
       accepted = true;
 
       step('Confirming…');
-      let result = await confirm(device, id, playlistId, Math.min(run.deadline, Date.now() + CONFIRM_WINDOW_MS), run.signal);
+      const onOurs = restoreOnSwitch(id, run);
+      let result = await confirm(
+        device,
+        id,
+        playlistId,
+        Math.min(run.deadline, Date.now() + CONFIRM_WINDOW_MS),
+        run.signal,
+        undefined,
+        onOurs,
+      );
 
       if (!result.ok) {
         const last = result.last;
@@ -398,17 +415,14 @@ export function createPipeline(opts: PipelineOptions = {}) {
           await device.sendPlay(id, req, run.signal); // at most one re-send per press
           step('Confirming…');
         }
-        result = await confirm(device, id, playlistId, run.deadline - 100, run.signal);
+        result = await confirm(device, id, playlistId, run.deadline - 100, run.signal, undefined, onOurs);
       }
 
       if (!run.current()) return state;
       if (result.ok) {
         log('pipeline', `#${run.mine} playing`);
         set({ status: 'playing', seq: run.mine, playlistId, deviceLabel: device.label });
-        await fadeIn(device, id, run.signal).catch((e: unknown) => {
-          if (run.signal.aborted) throw e;
-          restoreVolume('fade-in failed');
-        });
+        onOurs(); // in case confirmation came before any separate "ours" sighting
         await ensureMode(device, id, result.obs, run.signal);
         return state;
       }
