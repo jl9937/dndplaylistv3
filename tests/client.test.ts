@@ -12,6 +12,14 @@ describe('request', () => {
     }
   });
 
+  it('accepts a 2xx with a non-JSON text body, without logging the body', async () => {
+    seedTokens();
+    stubFetch(() => new Response('W9LvT-yLfB3xampleSnapshotId', { status: 200, headers: { 'Content-Type': 'text/plain' } }));
+    expect(await request('PUT', '/me/player/play')).toEqual({ status: 200, data: null });
+    expect(formatLog()).toContain('ignored non-JSON body');
+    expect(formatLog()).not.toContain('W9LvT');
+  });
+
   it('parses a JSON body', async () => {
     seedTokens();
     stubFetch(() => json(200, { id: 'me' }));

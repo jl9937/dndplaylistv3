@@ -122,8 +122,18 @@ export async function request<T>(
     log('api', `${label} ${res.status} (${Math.round(performance.now() - started)} ms)`);
 
     if (res.ok) {
+      // Any 2xx is success. Player commands may return a non-JSON text body
+      // (seen 2026-10-28 on PUT /me/player/play), so never require JSON here.
       const text = await res.text();
-      return { status: res.status, data: text ? (JSON.parse(text) as T) : null };
+      let data: T | null = null;
+      if (text) {
+        try {
+          data = JSON.parse(text) as T;
+        } catch {
+          log('api', `${label} ${res.status}: ignored non-JSON body (${text.length} bytes)`);
+        }
+      }
+      return { status: res.status, data };
     }
 
     const body = await readErrorBody(res);

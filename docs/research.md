@@ -140,6 +140,10 @@ Goals: as simple as possible, quick to develop, flexible enough for later featur
 3. The redirect URI must save in the dashboard as `127.0.0.1`, not get rewritten to `localhost`.
 4. How the quota behaves with a few dozen playlists. This is expected to be fine: one paginated fetch per load.
 
+### Spike notes (Milestone 1, live)
+- **2026-10-28, first production login:** login (PKCE, workers.dev redirect), the library (148 playlists, paginated) and device listing (the MacBook Pro desktop app, listed as `Computer`, active) all worked first time. Pause and resume worked.
+- **`PUT /me/player/play` with a `context_uri` returns 200 with a plain-text body** (an opaque ID-like string), not an empty body. The first build parsed every non-empty 2xx body as JSON, so it threw and showed a false **Failed**. Fixed: the client never requires JSON on a 2xx (spec §12.7).
+
 ---
 
 ## 7. Later milestones research

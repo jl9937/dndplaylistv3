@@ -289,7 +289,7 @@ Classify by HTTP status **plus** the `error.reason` and `error.message` fields. 
 | 429 | Rate limited, possibly `QUOTA_EXCEEDED` | Wait for `Retry-After` up to 30 s. If it is longer: "Spotify quota hit, try again in N min" |
 | 5xx | Spotify error | Retry once, then "Spotify is having problems" |
 
-The client accepts **any 2xx** and never parses an empty body.
+The client accepts **any 2xx** and never requires a JSON body. Empty bodies and non-JSON text bodies both count as success: on 2026-10-28, `PUT /me/player/play` with a `context_uri` returned 200 with a plain-text body, while pause and resume returned empty bodies.
 
 ### 12.8 Diagnostics
 - An in-memory **event log** of the last 200 events: API calls (method, path, status, duration), SDK events, pipeline steps and device lifecycle changes, with timestamps.
