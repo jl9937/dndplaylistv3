@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { expireAccessTokenNow } from '../auth/auth';
+import { BUILD_ID } from '../config';
 import { faults, formatLog, log } from '../diagnostics/log';
 import { useLog } from './hooks';
 
@@ -17,6 +18,7 @@ export function DebugPanel({ onClose }: { onClose: () => void }) {
     <aside className="debug">
       <header>
         <strong>Log ({events.length})</strong>
+        <span className="build">build {BUILD_ID}</span>
         <button onClick={copy}>{copied ? 'Copied' : 'Copy log'}</button>
         <button onClick={expireAccessTokenNow}>Expire access token now</button>
         <button

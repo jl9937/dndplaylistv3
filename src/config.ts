@@ -1,5 +1,7 @@
 export const CLIENT_ID: string = import.meta.env.VITE_SPOTIFY_CLIENT_ID ?? '';
 
+export const BUILD_ID: string = typeof __BUILD_ID__ === 'undefined' ? 'test' : __BUILD_ID__;
+
 export const API_BASE = 'https://api.spotify.com/v1';
 export const ACCOUNTS_BASE = 'https://accounts.spotify.com';
 

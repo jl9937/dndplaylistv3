@@ -81,4 +81,4 @@ Other scripts: `npm test` (unit tests), `npm run typecheck`, `npm run build`, an
 3. Before the session, press **Ready check**: it checks the login, the device, a test play (then pauses), shuffle and repeat.
 4. Click a playlist. It starts at a random track, shuffled, repeating. The row shows **Playing** only once Spotify is seen playing it; otherwise **Failed** with the reason and what to do.
 
-**Log** (or `?debug` in the URL) opens the event log, with **Copy log** and fault-injection buttons for testing token refresh.
+**Log** (or `?debug` in the URL) opens the event log, with **Copy log** and fault-injection buttons for testing token refresh. Its header shows the **build ID** (commit and build time). After a deploy, an open app window keeps running the old build until you reload it (Cmd+Shift+R), so check the build ID before reporting a bug.

@@ -435,3 +435,7 @@ input[type='search'] {
 .kind {
   color: var(--accent);
 }
+
+.debug .build {
+  color: var(--muted);
+}
