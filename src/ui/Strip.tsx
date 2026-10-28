@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { parsePlaylistName } from '../library/tags';
+import { describePlaylist } from '../library/tags';
 import type { NowPlaying } from '../playback/nowPlaying';
 import type { PressState } from '../playback/pipeline';
 import { boardOrder, KEYED_TILES, type SessionSet } from '../sets/sets';
@@ -49,7 +49,8 @@ export function Strip({
         {scenes.map((scene, i) => {
           const playlist = byId.get(scene.playlistId);
           const s = statusOf(scene.playlistId);
-          const { tag, shortName } = parsePlaylistName(playlist?.name ?? scene.name);
+          const { tags, shortName } = describePlaylist(playlist?.name ?? scene.name);
+          const tag = tags[0];
           return (
             <li key={scene.id} className={`strip-tile ${s.status}`}>
               <button onClick={() => playlist && onPlay(playlist)} disabled={!playlist}>

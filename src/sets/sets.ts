@@ -3,7 +3,7 @@
 // Invariant: a set's `scenes` array is always contiguous by section (tag), in Board order.
 // So the Board, the number keys and storage can never disagree about order.
 
-import { labelFor, parsePlaylistName, tagKey, tagLabels } from '../library/tags';
+import { labelFor, primaryTagKey, tagLabels } from '../library/tags';
 
 /** A Board item. A scene (not a bare playlist ID) so Milestone 4 can attach ambience to it. */
 export interface Scene {
@@ -45,7 +45,8 @@ export function currentSet(doc: SetsDoc): SessionSet {
   return doc.sets.find((s) => s.id === doc.currentId) ?? doc.sets[0];
 }
 
-const sceneKey = (s: Scene) => tagKey(parsePlaylistName(s.name).tag);
+/** A tile goes in one section: its first tag (D24). */
+const sceneKey = (s: Scene) => primaryTagKey(s.name);
 
 /** Sections in order of first appearance. */
 export function sections(set: SessionSet): Section[] {

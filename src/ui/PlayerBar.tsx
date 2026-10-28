@@ -1,4 +1,4 @@
-import { parsePlaylistName } from '../library/tags';
+import { describePlaylist } from '../library/tags';
 import type { NowPlaying } from '../playback/nowPlaying';
 import type { PressState } from '../playback/pipeline';
 import type { Playlist } from '../spotify/types';
@@ -20,7 +20,7 @@ export function PlayerBar({
   onNext: () => void;
 }) {
   const pressedName = press.status !== 'idle' && press.playlistId ? byId.get(press.playlistId)?.name : undefined;
-  const short = (name: string | undefined) => (name ? parsePlaylistName(name).shortName : 'Spotify');
+  const short = (name: string | undefined) => (name ? describePlaylist(name).shortName : 'Spotify');
 
   let line: string;
   let sub: string | null = null;

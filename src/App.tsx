@@ -8,7 +8,7 @@ import { displayStatus, refreshNowPlaying, setFloating, startNowPlaying } from '
 import { createRemoteDevice, pipeline } from './playback/pipeline';
 import { boardOrder, currentSet, hasPlaylist, moveScene, moveSection, removeScene, syncNames, togglePlaylist } from './sets/sets';
 import { updateSets } from './sets/setsStore';
-import { parsePlaylistName } from './library/tags';
+import { describePlaylist } from './library/tags';
 import { trackCount, type Playlist } from './spotify/types';
 import { read, write } from './storage';
 import { Board } from './ui/Board';
@@ -115,7 +115,10 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     return s.state === 'ready' ? s.deviceId : null;
   };
   const playlists = library.status === 'ok' ? library.playlists : [];
-  const visible = showUntagged ? playlists : playlists.filter((p) => parsePlaylistName(p.name).tag !== null);
+  const visible = playlists.filter((p) => {
+    const d = describePlaylist(p.name);
+    return !d.hidden && (showUntagged || d.tags.length > 0);
+  });
   const byId = library.status === 'ok' ? library.byId : new Map<string, Playlist>();
 
   const statusOf = (playlistId: string) => itemStatus(playlistId, press, displayStatus(playlistId, press, now));

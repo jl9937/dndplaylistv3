@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
-import { groupByTag, parsePlaylistName } from '../library/tags';
+import { describePlaylist, groupByTag } from '../library/tags';
 import { trackCount, type Playlist } from '../spotify/types';
 import { Cover } from './Cover';
 import { StatusBadge, type ItemStatus } from './Status';
@@ -35,7 +35,8 @@ export function Library({
   const { groups, untagged } = useMemo(() => {
     if (library.status !== 'ok') return { groups: [], untagged: 0 };
     const f = filter.trim().toLocaleLowerCase();
-    const matching = f ? library.playlists.filter((p) => p.name.toLocaleLowerCase().includes(f)) : library.playlists;
+    const shown = library.playlists.filter((p) => !describePlaylist(p.name).hidden);
+    const matching = f ? shown.filter((p) => p.name.toLocaleLowerCase().includes(f)) : shown;
     const all = groupByTag(matching, (p) => p.name);
     const untaggedGroup = all.find((g) => g.key === '');
     return {
@@ -83,7 +84,7 @@ export function Library({
                     <button className="play" onClick={() => onPlay(p)}>
                       <Cover images={p.images} />
                       <span className="meta">
-                        <span className="name">{parsePlaylistName(p.name).shortName}</span>
+                        <span className="name">{describePlaylist(p.name).shortName}</span>
                         <span className="owner">
                           {[songs(p), p.owner.id !== library.myId ? `by ${p.owner.display_name ?? p.owner.id}` : null]
                             .filter(Boolean)
@@ -122,7 +123,7 @@ export function Library({
           <button className="link" onClick={() => onShowUntagged(!showUntagged)}>
             {showUntagged ? `Hide ${untagged} untagged` : `Show ${untagged} untagged`}
           </button>{' '}
-          (playlists without a <code>Tag:</code> prefix)
+          (no <code>Tag:</code> prefix and no rule in <code>config/tags.json</code>)
         </p>
       )}
     </section>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { search } from '../library/search';
-import { groupByTag, labelFor, parsePlaylistName, tagKey, tagLabels } from '../library/tags';
+import { describePlaylist, groupByTag, labelFor, primaryTagKey, tagLabels } from '../library/tags';
 import type { Playlist } from '../spotify/types';
 import { Cover } from './Cover';
 import { songs } from './Library';
@@ -15,12 +15,18 @@ interface Group {
 
 /** With a query: groups ordered by their best match. Without: the Library's A–Z grouping. */
 function grouped(playlists: Playlist[], query: string): Group[] {
-  if (!query.trim()) return groupByTag(playlists, (p) => p.name);
+  if (!query.trim()) {
+    // One row per playlist (under its first group), so keyboard selection stays unambiguous.
+    const seen = new Set<string>();
+    return groupByTag(playlists, (p) => p.name)
+      .map((g) => ({ ...g, items: g.items.filter((p) => !seen.has(p.id) && seen.add(p.id)) }))
+      .filter((g) => g.items.length > 0);
+  }
   const ranked = search(playlists, query, (p) => p.name).slice(0, MAX_RESULTS);
   const labels = tagLabels(playlists.map((p) => p.name));
   const groups: Group[] = [];
   for (const p of ranked) {
-    const key = tagKey(parsePlaylistName(p.name).tag);
+    const key = primaryTagKey(p.name);
     let g = groups.find((x) => x.key === key);
     if (!g) groups.push((g = { key, label: labelFor(key, labels), items: [] }));
     g.items.push(p);
@@ -111,7 +117,7 @@ export function Palette({
                     onClick={() => play(p)}
                   >
                     <Cover images={p.images} className="palette-cover" />
-                    <span className="palette-name">{parsePlaylistName(p.name).shortName}</span>
+                    <span className="palette-name">{describePlaylist(p.name).shortName}</span>
                     {songs(p) && <span className="palette-songs">{songs(p)}</span>}
                     <button
                       className={`fav small${starred ? ' on' : ''}`}

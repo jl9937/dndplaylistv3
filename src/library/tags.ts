@@ -1,4 +1,9 @@
 // Tags parsed from playlist names (spec §13.1, D6). Display only: nothing is renamed in Spotify.
+// Extra tags and hide rules come from config/tags.json (D24).
+
+import rawConfig from '../../config/tags.json';
+import { log } from '../diagnostics/log';
+import { parseTagConfig, type TagConfig } from './tagConfig';
 
 export interface ParsedName {
   /** null means Untagged. */
@@ -7,6 +12,43 @@ export interface ParsedName {
 }
 
 export const UNTAGGED_LABEL = 'Untagged';
+
+
+export interface Described {
+  /** Every tag, primary first: the name's own tag, then matching rules in config order. */
+  tags: string[];
+  shortName: string;
+  /** Matched a hide rule: left out of the Library and palette. */
+  hidden: boolean;
+}
+
+/** Build a describer for a config. The app uses `describePlaylist` (config/tags.json). */
+export function createDescriber(config: TagConfig) {
+  const cache = new Map<string, Described>();
+  return (name: string): Described => {
+    let d = cache.get(name);
+    if (d) return d;
+    const { tag, shortName: parsed } = parsePlaylistName(name);
+    const tags = tag ? [tag] : [];
+    let shortName = parsed;
+    for (const rule of config.tagRules) {
+      if (!rule.test(name)) continue;
+      if (!tags.some((t) => tagKey(t) === tagKey(rule.tag))) tags.push(rule.tag);
+      shortName = rule.strip(shortName);
+    }
+    d = { tags, shortName, hidden: config.hide.some((h) => h.test(name)) };
+    cache.set(name, d);
+    return d;
+  };
+}
+
+const loaded = parseTagConfig(rawConfig);
+for (const e of loaded.errors) log('app', `config/tags.json: ${e} (rule skipped)`);
+
+export const describePlaylist = createDescriber(loaded.config);
+
+/** The section a playlist goes in on the Board: its first tag. */
+export const primaryTagKey = (name: string, describe = describePlaylist) => tagKey(describe(name).tags[0] ?? null);
 
 /** `Town: Desert Town` → tag `Town`, short name `Desert Town`. Splits on the first colon only. */
 export function parsePlaylistName(name: string): ParsedName {
@@ -24,14 +66,14 @@ export function tagKey(tag: string | null): string {
 }
 
 /** For each tag key, the most common spelling (ties: a capitalised one, then first seen). */
-export function tagLabels(names: Iterable<string>): Map<string, string> {
+export function tagLabels(names: Iterable<string>, describe = describePlaylist): Map<string, string> {
   const counts = new Map<string, Map<string, number>>();
   for (const name of names) {
-    const { tag } = parsePlaylistName(name);
-    if (!tag) continue;
-    const spellings = counts.get(tagKey(tag)) ?? new Map<string, number>();
-    spellings.set(tag, (spellings.get(tag) ?? 0) + 1);
-    counts.set(tagKey(tag), spellings);
+    for (const tag of describe(name).tags) {
+      const spellings = counts.get(tagKey(tag)) ?? new Map<string, number>();
+      spellings.set(tag, (spellings.get(tag) ?? 0) + 1);
+      counts.set(tagKey(tag), spellings);
+    }
   }
   const labels = new Map<string, string>();
   for (const [key, spellings] of counts) {
@@ -60,21 +102,23 @@ export interface TagGroup<T> {
 
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
 
-/** Library grouping: tags A–Z with Untagged last; short names A–Z within each tag. */
-export function groupByTag<T>(items: T[], nameOf: (item: T) => string): TagGroup<T>[] {
-  const labels = tagLabels(items.map(nameOf));
+/**
+ * Library grouping: tags A–Z with Untagged last; short names A–Z within each tag.
+ * A playlist with several tags appears in each of their groups.
+ */
+export function groupByTag<T>(items: T[], nameOf: (item: T) => string, describe = describePlaylist): TagGroup<T>[] {
+  const labels = tagLabels(items.map(nameOf), describe);
   const groups = new Map<string, T[]>();
   for (const item of items) {
-    const key = tagKey(parsePlaylistName(nameOf(item)).tag);
-    groups.set(key, [...(groups.get(key) ?? []), item]);
+    const tags = describe(nameOf(item)).tags;
+    for (const key of tags.length ? tags.map(tagKey) : ['']) groups.set(key, [...(groups.get(key) ?? []), item]);
   }
+  const short = (item: T) => describe(nameOf(item)).shortName;
   return [...groups.entries()]
     .map(([key, list]) => ({
       key,
       label: labelFor(key, labels),
-      items: list.sort((a, b) =>
-        collator.compare(parsePlaylistName(nameOf(a)).shortName, parsePlaylistName(nameOf(b)).shortName),
-      ),
+      items: list.sort((a, b) => collator.compare(short(a), short(b))),
     }))
     .sort((a, b) => (a.key === '' ? 1 : b.key === '' ? -1 : collator.compare(a.label, b.label)));
 }

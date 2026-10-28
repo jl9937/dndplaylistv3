@@ -1,7 +1,7 @@
 // Fuzzy search for the quick-switch palette (spec §13.2). Pure and synchronous: the
 // palette must open and filter instantly with no API call.
 
-import { parsePlaylistName } from './tags';
+import { describePlaylist } from './tags';
 
 /**
  * Score one query token against text, or null if it doesn't match.
@@ -26,16 +26,16 @@ export function tokenScore(token: string, text: string): number | null {
   return Math.max(1, 40 - gaps * 5);
 }
 
-/** Score a playlist name against the whole query. Every token must match the short name or tag. */
-export function nameScore(query: string, name: string): number | null {
+/** Score a playlist name against the whole query. Every token must match the short name or a tag. */
+export function nameScore(query: string, name: string, describe = describePlaylist): number | null {
   const tokens = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return 0;
-  const { tag, shortName } = parsePlaylistName(name);
+  const { tags, shortName } = describe(name);
   let total = 0;
   for (const token of tokens) {
     const inName = tokenScore(token, shortName);
-    const inTag = tag ? tokenScore(token, tag) : null;
-    const best = Math.max(inName ?? -1, inTag === null ? -1 : inTag * 0.8);
+    const inTag = Math.max(-1, ...tags.map((t) => tokenScore(token, t) ?? -1));
+    const best = Math.max(inName ?? -1, inTag < 0 ? -1 : inTag * 0.8);
     if (best < 0) return null;
     total += best;
   }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { parsePlaylistName } from '../library/tags';
+import { describePlaylist } from '../library/tags';
 import { KEYED_TILES, sections, type Scene, type SessionSet } from '../sets/sets';
 import type { Playlist } from '../spotify/types';
 import { Cover } from './Cover';
@@ -115,7 +115,7 @@ function Tile({
   onDragEnd: () => void;
   onDrop: () => void;
 }) {
-  const { shortName } = parsePlaylistName(playlist?.name ?? scene.name);
+  const { shortName } = describePlaylist(playlist?.name ?? scene.name);
   return (
     <li
       className={`tile ${status.status}${dropTarget ? ' drop-target' : ''}${playlist ? '' : ' unavailable'}`}

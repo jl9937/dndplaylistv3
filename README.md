@@ -76,6 +76,28 @@ Open <http://127.0.0.1:5173/>. The port is fixed (`strictPort`): if 5173 is busy
 
 Other scripts: `npm test` (unit tests), `npm run typecheck`, `npm run build`, and `npm run deploy` (manual deploy with Wrangler; normally Cloudflare deploys on push).
 
+## Tag rules
+
+Playlists are grouped by the tag before the first colon in their name (`Town: Desert Town` → **Town**). [config/tags.json](config/tags.json) adds more:
+
+```json
+{
+  "tagRules": [
+    { "tag": "Theme", "contains": "Theme - ", "removeFromName": true }
+  ],
+  "hide": [
+    { "contains": "For DnD Sorting" }
+  ]
+}
+```
+
+- **`tagRules`** add a tag to every playlist whose name matches. A playlist keeps its own `Tag:` too, and appears under each of its tags in the Library. On the Board it goes in one section: its own tag first, otherwise the first rule that matches.
+- **`hide`** keeps matching playlists out of the Library and the palette. A playlist already on the Board stays there.
+- Each rule matches with exactly one of `contains`, `startsWith` or `regex`. Matching ignores case.
+- `removeFromName: true` removes the matched text from the displayed name, so `Theme - Duskvol` shows as **Duskvol**. Names in Spotify never change.
+- A broken rule is skipped and reported in the Log, and the rest still apply. `npm test` checks the file.
+- Changes take effect once they're pushed and deployed, then the app window is reloaded.
+
 ## Using it
 
 1. Log in with Spotify.
