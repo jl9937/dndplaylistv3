@@ -1053,3 +1053,17 @@ button.icon {
   color: var(--accent);
   border-color: var(--accent);
 }
+
+/* A card's other tags, shown before its name in a tag group. */
+.tag-chip {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: 0.1em;
+}

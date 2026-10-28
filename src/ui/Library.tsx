@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
-import { describePlaylist, groupByTag } from '../library/tags';
+import { describePlaylist, groupByTag, tagKey } from '../library/tags';
 import { trackCount, type Playlist } from '../spotify/types';
 import { read, write } from '../storage';
 import { Cover } from './Cover';
@@ -123,7 +123,17 @@ export function Library({
                     <button className="play" onClick={() => onPlay(p)}>
                       <Cover images={p.images} />
                       <span className="meta">
-                        <span className="name">{describePlaylist(p.name).shortName}</span>
+                        <span className="name">
+                          {/* Its other tags, so same-named playlists in one group stay distinct. */}
+                          {describePlaylist(p.name)
+                            .tags.filter((t) => tagKey(t) !== g.key)
+                            .map((t) => (
+                              <span key={t} className="tag-chip">
+                                {t}
+                              </span>
+                            ))}
+                          {describePlaylist(p.name).shortName}
+                        </span>
                         <span className="owner">
                           {[songs(p), p.owner.id !== library.myId ? `by ${p.owner.display_name ?? p.owner.id}` : null]
                             .filter(Boolean)
