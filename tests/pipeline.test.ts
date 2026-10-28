@@ -313,6 +313,16 @@ describe('play pipeline', () => {
   });
 });
 
+describe('gesture', () => {
+  it('calls prepareGesture synchronously, before the first await (SDK autoplay policy)', () => {
+    const { device } = fakeDevice();
+    const prepareGesture = vi.fn();
+    device.prepareGesture = prepareGesture;
+    void createPipeline().press({ id: 'PL1' }, device);
+    expect(prepareGesture).toHaveBeenCalledTimes(1); // no await has happened yet
+  });
+});
+
 describe('pause and resume', () => {
   it('pauses, treating "already paused" as success', async () => {
     const { device } = fakeDevice();

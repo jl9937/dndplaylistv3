@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { deviceStore, type DevicePref } from '../playback/devices';
+import { webPlayback } from '../player/instance';
+import { createSdkDevice } from '../player/sdkDevice';
+import { isBrowserPref } from './DevicePicker';
 import { createRemoteDevice, pipeline } from '../playback/pipeline';
 import { initialSteps, runReadyCheck, type ReadyStep } from '../playback/readyCheck';
 import { trackCount, type Playlist } from '../spotify/types';
@@ -32,9 +35,8 @@ export function ReadyCheck({
       await runReadyCheck({
         pref,
         playlist: p && { id: p.id, name: p.name, total: trackCount(p) },
-        store: deviceStore,
         pipeline,
-        makeDevice: (d) => createRemoteDevice(d, deviceStore),
+        makeDevice: (d) => (isBrowserPref(d) ? createSdkDevice(webPlayback) : createRemoteDevice(d, deviceStore)),
         onUpdate: setSteps,
       });
     } finally {

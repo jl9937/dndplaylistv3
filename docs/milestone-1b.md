@@ -1,6 +1,6 @@
 # Milestone 1b: In-browser player as automatic fallback
 
-Status: planned, straight after Milestone 1 (D16) · Parent: [spec.md](spec.md) · Builds on: [milestone-1.md](milestone-1.md)
+Status: built 2026-10-28, after 2a and 2b (D22). Tested against a fake SDK and, in the browser, against the real SDK script with a fake token. Not yet tried with real Spotify playback · Parent: [spec.md](spec.md) · Builds on: [milestone-1.md](milestone-1.md)
 
 ## Goal
 
@@ -20,7 +20,13 @@ If the Spotify desktop app isn't running when I press a playlist, the music play
 ## Changes from Milestone 1
 - **Scopes:** add `streaming`, `user-read-email` and `user-read-private` (needed by the SDK). Existing users get the consent screen again once.
 - **CSP:** add `https://sdk.scdn.co` to `script-src` and `frame-src`.
-- **Layout:** add `src/player/webPlayback.ts` (the SDK singleton: loader, lifecycle state machine, registration polling, recovery ladder, wake detection, `getOAuthToken` → `getAccessToken()`), plus `src/instance.ts` (a BroadcastChannel guard). The SDK device plugs into the existing pipeline device interface.
+- **Layout:**
+  - `src/player/webPlayback.ts`: the SDK singleton (loader, lifecycle state machine, registration polling, recovery ladder, wake detection, `getOAuthToken` → `getAccessToken()`).
+  - `src/player/sdkDevice.ts`: "This browser" as a pipeline device.
+  - `src/playback/fallback.ts`: the per-press automatic fallback.
+  - `src/player/instance.ts`: the single-instance guard. It uses **Web Locks** rather than a BroadcastChannel: the lock dies with the tab, and "Use this tab instead" steals it.
+- **Existing logins:** tokens record their granted scopes now. A login from before 1b lacks `streaming`, so "This browser" shows **needs a one-time re-login**, with a button. Remote control keeps working meanwhile.
+- **CSP findings:** with the real SDK script loaded, the page itself contacted only `sdk.scdn.co`. Streaming happens inside the SDK's own iframe.
 
 ## User stories and acceptance criteria
 

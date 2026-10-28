@@ -935,3 +935,19 @@ button.icon {
   color: var(--bad);
   font-size: 0.85em;
 }
+
+/* ---------- milestone 1b ---------- */
+
+.enable-audio {
+  width: 100%;
+  font-size: 1.3rem;
+  padding: 1rem;
+}
+
+.sdk-line button {
+  margin-left: 0.4rem;
+}
+
+.sdk-line.failed {
+  color: var(--bad);
+}

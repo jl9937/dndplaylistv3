@@ -4,8 +4,8 @@ import { daysUntilRelogin, getAccessToken } from '../auth/auth';
 import { RELOGIN_WARN_DAYS } from '../config';
 import { getPlaybackState } from '../spotify/api';
 import { sleep } from '../sleep';
-import { matchDevice, type DevicePref, type DeviceStore } from './devices';
-import type { Pipeline, PlayerDevice, PlaylistRef } from './pipeline';
+import type { DevicePref } from './devices';
+import { DEADLINE_MS, type Pipeline, type PlayerDevice, type PlaylistRef } from './pipeline';
 
 export type StepStatus = 'pending' | 'running' | 'ok' | 'warn' | 'fail';
 
@@ -19,7 +19,6 @@ export interface ReadyStep {
 export interface ReadyCheckInput {
   pref: DevicePref | null;
   playlist: (PlaylistRef & { name: string }) | null;
-  store: DeviceStore;
   pipeline: Pipeline;
   makeDevice: (pref: DevicePref) => PlayerDevice;
   onUpdate: (steps: ReadyStep[]) => void;
@@ -66,14 +65,12 @@ export async function runReadyCheck(input: ReadyCheckInput): Promise<ReadyStep[]
     failRest(['play', 'mode']);
     return steps;
   }
+  // Resolve exactly as a press would (fresh list; the SDK registers or recovers), but with
+  // no fallback: the check reports on the device you chose.
+  const device = input.makeDevice(input.pref);
   try {
-    const found = matchDevice(await input.store.refresh(), input.pref);
-    if (!found) {
-      update('device', { status: 'fail', detail: `Spotify isn't open on ${input.pref.name}` });
-      failRest(['play', 'mode']);
-      return steps;
-    }
-    update('device', { status: 'ok', detail: `${found.name} (${found.type})` });
+    await device.resolve(AbortSignal.timeout(DEADLINE_MS), true);
+    update('device', { status: 'ok', detail: device.label });
   } catch (e) {
     update('device', { status: 'fail', detail: e instanceof Error ? e.message : String(e) });
     failRest(['play', 'mode']);
@@ -87,7 +84,6 @@ export async function runReadyCheck(input: ReadyCheckInput): Promise<ReadyStep[]
     return steps;
   }
   update('play', { status: 'running', detail: input.playlist.name });
-  const device = input.makeDevice(input.pref);
   const result = await input.pipeline.press(input.playlist, device);
   if (result.status !== 'playing') {
     update('play', { status: 'fail', detail: result.status === 'failed' ? result.reason : 'Superseded' });

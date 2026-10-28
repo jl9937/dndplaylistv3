@@ -13,8 +13,12 @@ import { trackCount, type Playlist } from './spotify/types';
 import { read, write } from './storage';
 import { Board } from './ui/Board';
 import { DebugPanel } from './ui/DebugPanel';
-import { DevicePicker } from './ui/DevicePicker';
-import { useAuthStatus, useLibrary, useNowPlaying, usePressState, useSets } from './ui/hooks';
+import { DevicePicker, isBrowserPref } from './ui/DevicePicker';
+import { createFallbackDevice } from './playback/fallback';
+import { bootPlayer, webPlayback } from './player/instance';
+import { createSdkDevice } from './player/sdkDevice';
+import { SDK_PLAYER_NAME } from './player/webPlayback';
+import { useAuthStatus, useAutoplayBlocked, useLibrary, useNowPlaying, usePressState, useSets } from './ui/hooks';
 import { Library } from './ui/Library';
 import { LoginScreen } from './ui/LoginScreen';
 import { Palette } from './ui/Palette';
@@ -66,8 +70,11 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   const set = currentSet(sets);
   const [route, go] = useRoute(set.scenes.length > 0 ? 'board' : 'library');
 
+  const autoplayBlocked = useAutoplayBlocked();
+
   useEffect(() => {
     void loadLibrary();
+    void bootPlayer();
     return startNowPlaying();
   }, []);
 
@@ -78,7 +85,35 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     updateSets((d) => syncNames(d, names));
   }, [library]);
 
-  const device = useMemo(() => (pref ? createRemoteDevice(pref, deviceStore) : null), [pref]);
+  const sdkDevice = useMemo(() => createSdkDevice(webPlayback), []);
+  const device = useMemo(
+    () => (!pref ? null : isBrowserPref(pref) ? sdkDevice : createRemoteDevice(pref, deviceStore)),
+    [pref, sdkDevice],
+  );
+
+  /** Per press: a remote choice falls back to this window if it isn't open (US-1b-2). */
+  const pressDevice = () => {
+    if (!device || device === sdkDevice) return device;
+    return createFallbackDevice(
+      device,
+      sdkDevice,
+      () => {
+        const s = webPlayback.getStatus();
+        return s.state !== 'off' && !(s.state === 'failed' && s.action !== 'reload');
+      },
+      (label) => setNotice(`Spotify app not found on ${label}, so it's playing in this window.`),
+    );
+  };
+
+  /** Pause and Next go to whatever is actually playing: this window after a fallback. */
+  const controlDevice = () =>
+    now.state?.device?.name === SDK_PLAYER_NAME || (now.state?.device?.id && now.state.device.id === sdkId())
+      ? sdkDevice
+      : device;
+  const sdkId = () => {
+    const s = webPlayback.getStatus();
+    return s.state === 'ready' ? s.deviceId : null;
+  };
   const playlists = library.status === 'ok' ? library.playlists : [];
   const visible = showUntagged ? playlists : playlists.filter((p) => parsePlaylistName(p.name).tag !== null);
   const byId = library.status === 'ok' ? library.byId : new Map<string, Playlist>();
@@ -107,17 +142,19 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     }
     setNotice(null);
     write('prefs.lastPlaylist', p.id);
-    void pipeline.press({ id: p.id, total: trackCount(p) }, device);
+    void pipeline.press({ id: p.id, total: trackCount(p) }, pressDevice()!);
   };
 
   const togglePause = () => {
-    if (!device) return;
-    void (now.state?.is_playing ? pipeline.pause(device) : pipeline.resume(device));
+    const d = controlDevice();
+    if (!d) return;
+    void (now.state?.is_playing ? pipeline.pause(d) : pipeline.resume(d));
   };
 
   const next = async () => {
-    if (!device) return;
-    const error = await pipeline.next(device);
+    const d = controlDevice();
+    if (!d) return;
+    const error = await pipeline.next(d);
     setNotice(error);
     setTimeout(() => void refreshNowPlaying(), 600);
   };
@@ -193,6 +230,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   }
 
   const onLogout = () => {
+    webPlayback.stop();
     pipeline.reset();
     deviceStore.clear();
     resetLibrary();
@@ -241,7 +279,19 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
         </p>
       )}
       <DevicePicker ref={deviceSelect} pref={pref} onChange={choosePref} />
-      {notice && <p className="notice">{notice}</p>}
+      {notice && (
+        <p className="notice">
+          {notice}{' '}
+          <button className="icon" onClick={() => setNotice(null)} aria-label="Dismiss">
+            ×
+          </button>
+        </p>
+      )}
+      {autoplayBlocked && (
+        <button className="primary big enable-audio" onClick={() => void webPlayback.enableAudio()}>
+          Click to enable audio
+        </button>
+      )}
 
       {showReady && library.status === 'ok' && (
         <ReadyCheck playlists={playlists} pref={pref} onClose={() => setShowReady(false)} />

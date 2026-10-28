@@ -2,7 +2,7 @@
 
 A small web app for switching Spotify playlists quickly while running a D&D session. Before the game, pick a few playlists. During the game, switch between them with one click. Spotify does the playing; this app tells it what to play.
 
-Status: **Milestone 1** built (log in, list playlists, click to play on the Spotify desktop app). Awaiting first real-Spotify test and soak test.
+Status: Milestones 1, 2a, 2b and 1b built and deployed. The Milestone 1 soak test is still to do.
 
 ## Docs
 

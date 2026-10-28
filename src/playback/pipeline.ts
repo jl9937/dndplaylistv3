@@ -35,6 +35,8 @@ export interface Observation {
 
 export interface PlayerDevice {
   readonly label: string;
+  /** Step 1: called synchronously in the click handler, before any await (SDK autoplay). */
+  prepareGesture?(): void;
   /** Step 3: a usable device ID. `fresh` forces a new device list. Throws DeviceMissingError. */
   resolve(signal: AbortSignal, fresh?: boolean): Promise<string>;
   /** Step 4: send the play command once (no retries). Throws SpotifyError. */
@@ -98,7 +100,10 @@ export function createRemoteDevice(pref: DevicePref, store: DeviceStore): Player
  */
 export function guardDevice(d: PlayerDevice): PlayerDevice {
   return {
-    label: d.label,
+    get label() {
+      return d.label; // a fallback device changes label mid-press
+    },
+    prepareGesture: () => d.prepareGesture?.(),
     resolve: (signal, fresh) => raceAbort(d.resolve(signal, fresh), signal),
     sendPlay: (id, req, signal) => raceAbort(d.sendPlay(id, req, signal), signal),
     sendResume: (id, signal) => raceAbort(d.sendResume(id, signal), signal),
@@ -280,6 +285,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
 
   /** Press a playlist. Resolves with the final state of this press (for the Ready check). */
   async function press(playlist: PlaylistRef, rawDevice: PlayerDevice): Promise<PressState> {
+    rawDevice.prepareGesture?.(); // before any await
     const run = begin();
     const device = guardDevice(rawDevice);
     const playlistId = playlist.id;
@@ -379,6 +385,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
 
   /** Resume is confirmed the same way as a press: observed playing and advancing. */
   async function resume(rawDevice: PlayerDevice): Promise<PressState> {
+    rawDevice.prepareGesture?.();
     const run = begin();
     const device = guardDevice(rawDevice);
     const playlistId = currentPlaylistId();

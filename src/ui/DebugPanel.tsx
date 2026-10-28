@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { expireAccessTokenNow } from '../auth/auth';
 import { BUILD_ID } from '../config';
+import { webPlayback } from '../player/instance';
 import { faults, formatLog, log } from '../diagnostics/log';
 import { useLog } from './hooks';
 
@@ -29,6 +30,7 @@ export function DebugPanel({ onClose }: { onClose: () => void }) {
         >
           Simulate 401 on next request
         </button>
+        <button onClick={() => webPlayback.kill()}>Kill SDK player</button>
         <button onClick={onClose} aria-label="Close log">×</button>
       </header>
       <ol className="events">

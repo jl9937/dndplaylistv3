@@ -20,6 +20,8 @@ export interface Tokens {
   expiresAt: number;
   /** Epoch ms of the original login. The refresh token dies ~6 months after this. */
   loginAt: number;
+  /** Space-separated scopes Spotify granted. Missing on tokens from before Milestone 1b. */
+  scope?: string;
 }
 
 interface PendingLogin {
@@ -149,6 +151,7 @@ export async function handleCallback(url: URL = new URL(location.href)): Promise
       refreshToken: json.refresh_token!,
       expiresAt: now + json.expires_in * 1000,
       loginAt: now,
+      scope: json.scope,
     });
     reloginNeeded = false;
     notify();
@@ -164,6 +167,7 @@ interface TokenResponse {
   access_token: string;
   expires_in: number;
   refresh_token?: string;
+  scope?: string;
 }
 
 async function tokenRequest(body: URLSearchParams, what: string): Promise<TokenResponse> {
@@ -263,6 +267,7 @@ async function doRefresh(staleToken: string): Promise<string> {
       refreshToken: json.refresh_token ?? tokens.refreshToken,
       expiresAt: Date.now() + json.expires_in * 1000,
       loginAt: tokens.loginAt,
+      scope: json.scope ?? tokens.scope,
     };
     storeTokens(next);
     if (json.refresh_token && json.refresh_token !== tokens.refreshToken) {
@@ -278,6 +283,11 @@ async function doRefresh(staleToken: string): Promise<string> {
     }
     throw e;
   }
+}
+
+/** Was this scope granted? Tokens from before a scope was added need a re-login. */
+export function hasScope(scope: string): boolean {
+  return readTokens()?.scope?.split(' ').includes(scope) ?? false;
 }
 
 // ---------- logout, countdown, debug ----------

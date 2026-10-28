@@ -5,12 +5,15 @@ export const BUILD_ID: string = typeof __BUILD_ID__ === 'undefined' ? 'test' : _
 export const API_BASE = 'https://api.spotify.com/v1';
 export const ACCOUNTS_BASE = 'https://accounts.spotify.com';
 
-/** Milestone 1 scopes only (spec §9). 1b adds streaming, user-read-email, user-read-private. */
+/** Spec §9. The last three are required by the Web Playback SDK (Milestone 1b). */
 export const SCOPES = [
   'playlist-read-private',
   'playlist-read-collaborative',
   'user-read-playback-state',
   'user-modify-playback-state',
+  'streaming',
+  'user-read-email',
+  'user-read-private',
 ];
 
 /** The app root is the redirect URI: http://127.0.0.1:5173/ in dev, the workers.dev URL in production. */
