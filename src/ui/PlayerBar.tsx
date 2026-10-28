@@ -62,7 +62,7 @@ export function PlayerBar({
         {sub && <span className="now-sub">{sub}</span>}
       </span>
       <span className="controls">
-        <button onClick={onToggle} disabled={!canControl} title="Space">
+        <button onClick={onToggle} disabled={!canControl}>
           {isPlaying ? 'Pause' : 'Resume'}
         </button>
         <button onClick={onNext} disabled={!canControl || !now.state}>

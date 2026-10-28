@@ -97,11 +97,11 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 - Mark playlists as part of a session set from the Library view (star/checkbox).
 - Board view: the set's playlists as large tiles in my chosen order (drag to reorder).
 - **Quick switch to any playlist:** from the Board, one key (`/` or `Ctrl/Cmd+K`) opens a search palette over the *whole* library, grouped by tag. `Enter` plays the result through the same play pipeline. An option adds it to the current set. See [§13.2](#132-reaching-non-selected-playlists-mid-session).
-- Keyboard shortcuts: `1`–`9` start the matching tile, `Space` toggles pause.
+- Keyboard shortcuts: `1`–`9` start the matching tile. (`Space` dropped, D23.)
 - Now-playing strip: current playlist, track, play/pause, next, volume.
 - Shuffle on by default when starting a playlist (setting). Repeat context on, so the music does not stop.
-- Several saved session sets. Switch between them.
-- Export and import session sets as JSON (moved up from Milestone 3, because browser storage can be wiped). Call `navigator.storage.persist()` on first save.
+- ~~Several saved session sets. Switch between them.~~ Dropped: one Board (D23).
+- ~~Export and import session sets as JSON.~~ Dropped (D23). Call `navigator.storage.persist()` on first save.
 - Session set items are stored as **scene** objects, not bare playlist IDs, so that ambience layers can be attached later without migrating data (see [§5](#5-concepts)).
 - **Compact mode** (D12): (A) docked strip, then (B) always-on-top floating strip after a spike. See [§13.5](#135-compact-mode).
 - Hash-based page routing (`#/board`, `#/library`, later `#/ambience`, `#/studio`). It needs no server-side SPA fallback.
@@ -191,6 +191,7 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 | D20 | Board layout | **Sections by tag.** Sections are ordered by first addition and can be moved up or down. Tiles are dragged within a section. | Matches how Jim names playlists (`Town: …`, `Xanathar: …`). |
 | D21 | Now playing | Track and artist, plus **Next**. No volume slider, no cover art. | Volume is set in the Spotify app; the API's volume command is rate-limited and coarse. |
 | D22 | Order after Milestone 1 | **2a before 1b**, and before the Milestone 1 soak test, at Jim's request (2026-10-28). | Milestone 1 already works in real use. 1b and the soak test follow 2a. |
+| D23 | Board simplification (after first use, 2026-10-28) | **One Board**, no named session sets, no set picker, no JSON export/import. **Space is not a shortcut** (too easy to hit by accident) and is blocked from re-pressing a focused tile. **Untagged playlists are hidden** in the Library and palette by default, with a "Show N untagged" link. The favourite toggle is a labelled button ("Add to Board"). Rows show the **song count**. | Jim found the multi-set UI unnecessary. The Board is still saved in this browser's `localStorage`, never on a server (spec §4: no backend). Total duration would need every playlist's tracks fetched, and `/items` only works for playlists Jim owns or collaborates on, so the count is shown instead. |
 | D12 | Compact mode | **A then B.** (A) A button switches to a docked narrow strip: compact layout, and the window resizes and moves itself to the screen edge. (B) An always-on-top floating strip using Document Picture-in-Picture (Chrome/Edge), tested early in Milestone 2. | A is the reliable baseline. B is the target experience if the spike passes. See [§13.5](#135-compact-mode). |
 
 ### Open questions

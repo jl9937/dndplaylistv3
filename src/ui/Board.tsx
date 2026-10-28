@@ -30,9 +30,10 @@ export function Board({
   if (list.length === 0) {
     return (
       <section className="board empty">
-        <p>This set is empty.</p>
+        <p>The Board is empty.</p>
         <p>
-          Star playlists in the <button className="link" onClick={onOpenLibrary}>Library</button> to add them here.
+          Use <strong>Add to Board</strong> in the <button className="link" onClick={onOpenLibrary}>Library</button> to put
+          playlists here.
         </p>
       </section>
     );
@@ -145,7 +146,7 @@ function Tile({
           {status.reason} <button onClick={() => playlist && onPlay(playlist)}>Try again</button>
         </span>
       )}
-      <button className="icon tile-remove" onClick={onRemove} aria-label={`Remove ${shortName} from this set`} title="Remove from set">
+      <button className="icon tile-remove" onClick={onRemove} aria-label={`Remove ${shortName} from the Board`} title="Remove from the Board">
         ×
       </button>
     </li>

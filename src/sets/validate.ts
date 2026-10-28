@@ -1,17 +1,7 @@
-// JSON export/import of session sets. Browser storage can be wiped; a file can't.
-// The same validator guards what we load from localStorage.
+// Validates the Board document loaded from localStorage, so a corrupt or hand-edited
+// value can't break the app.
 
 import type { Scene, SessionSet, SetsDoc } from './sets';
-
-export const EXPORT_KIND = 'dnd-playlist-manager/session-sets';
-
-export function exportDoc(doc: SetsDoc, now = new Date()): string {
-  return JSON.stringify(
-    { kind: EXPORT_KIND, version: doc.version, exportedAt: now.toISOString(), currentId: doc.currentId, sets: doc.sets },
-    null,
-    2,
-  );
-}
 
 export type ParseResult = { ok: true; doc: SetsDoc } | { ok: false; error: string };
 
@@ -43,17 +33,4 @@ export function parseDoc(value: unknown): ParseResult {
   }
   const currentId = isString(v.currentId) && sets.some((s) => s.id === v.currentId) ? v.currentId : sets[0].id;
   return { ok: true, doc: { version: 1, currentId, sets } };
-}
-
-export function parseImport(text: string): ParseResult {
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    return { ok: false, error: 'The file is not valid JSON.' };
-  }
-  if ((value as Record<string, unknown> | null)?.kind !== EXPORT_KIND) {
-    return { ok: false, error: 'This is not a D&D Playlist Manager export.' };
-  }
-  return parseDoc(value);
 }

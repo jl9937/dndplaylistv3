@@ -4,7 +4,6 @@ export interface ShortcutHandlers {
   openPalette: () => void;
   /** 1-based tile number. */
   playTile: (n: number) => void;
-  togglePause: () => void;
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -14,7 +13,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(target.type);
 }
 
-/** US-2a-5: Cmd/Ctrl+K or / for the palette, 1–9 for tiles, Space to pause/resume. */
+/** US-2a-5: Cmd/Ctrl+K or / for the palette, 1–9 for tiles. Space does nothing (D23). */
 export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean): void {
   const ref = useRef(handlers);
   ref.current = handlers;
@@ -35,11 +34,11 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean): void
         e.preventDefault();
         ref.current.playTile(Number(e.key));
       } else if (e.key === ' ') {
+        // A stray Space must not re-press the tile that has focus (a button's default action).
         e.preventDefault();
-        ref.current.togglePause();
       }
     };
-    // A focused button activates on Space *keyup*: stop it, or Space would also re-press the last tile.
+    // Buttons activate on Space *keyup*, so block that too. Enter still activates them.
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.key === ' ' && !isTyping(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey) e.preventDefault();
     };

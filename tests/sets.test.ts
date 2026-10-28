@@ -1,16 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { exportDoc, parseDoc, parseImport } from '../src/sets/exportImport';
+import { parseDoc } from '../src/sets/validate';
 import {
   boardOrder,
-  createSet,
   currentSet,
-  deleteSet,
   emptyDoc,
   moveScene,
   moveSection,
-  renameSet,
   sections,
-  switchSet,
   syncNames,
   togglePlaylist,
   type SetsDoc,
@@ -69,38 +65,16 @@ describe('session sets', () => {
     const renamed = syncNames(doc, new Map([['p0', 'Combat: A']]));
     expect(sections(currentSet(renamed)).map((s) => s.label)).toEqual(['Combat']);
   });
-
-  it('creates, renames, switches and deletes sets, always keeping one', () => {
-    let doc = createSet(emptyDoc(), 'Xanathar 12');
-    expect(doc.sets).toHaveLength(2);
-    expect(currentSet(doc).name).toBe('Xanathar 12');
-    doc = renameSet(doc, doc.currentId, '  Xanathar 13 ');
-    expect(currentSet(doc).name).toBe('Xanathar 13');
-    expect(renameSet(doc, doc.currentId, '   ')).toBe(doc);
-    const firstId = doc.sets[0].id;
-    doc = switchSet(doc, firstId);
-    expect(doc.currentId).toBe(firstId);
-    doc = deleteSet(doc, firstId);
-    expect(doc.sets).toHaveLength(1);
-    expect(currentSet(doc).name).toBe('Xanathar 13');
-    doc = deleteSet(doc, doc.currentId);
-    expect(doc.sets).toHaveLength(1);
-  });
 });
 
-describe('export and import', () => {
-  it('round-trips', () => {
-    const doc = withPlaylists('Town: A', 'Combat: X');
-    const result = parseImport(exportDoc(doc));
-    expect(result).toEqual({ ok: true, doc });
-  });
-
-  it('rejects files that are not ours, bad JSON, and malformed scenes', () => {
-    expect(parseImport('nope')).toMatchObject({ ok: false, error: 'The file is not valid JSON.' });
-    expect(parseImport('{"version":1,"sets":[]}')).toMatchObject({ ok: false });
-    const bad = JSON.parse(exportDoc(withPlaylists('Town: A')));
-    bad.sets[0].scenes[0].playlistId = '../../etc';
-    expect(parseImport(JSON.stringify(bad))).toMatchObject({ ok: false });
+describe('stored document validation', () => {
+  it('rejects malformed documents and scenes', () => {
+    expect(parseDoc(null)).toMatchObject({ ok: false });
+    expect(parseDoc({ version: 1, sets: [] })).toMatchObject({ ok: false });
+    expect(parseDoc({ version: 2, sets: [{}] })).toMatchObject({ ok: false });
+    expect(
+      parseDoc({ version: 1, sets: [{ id: 's', name: 'B', scenes: [{ id: 'c', playlistId: '../../etc', name: 'x' }] }] }),
+    ).toMatchObject({ ok: false });
   });
 
   it('drops unknown fields and fixes a dangling currentId', () => {

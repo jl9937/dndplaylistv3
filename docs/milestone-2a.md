@@ -13,19 +13,18 @@ Before a session, I star the 5–9 playlists I'll need. During the session, the 
 - **D21:** Now playing shows **track and artist**, with **Next** beside Pause/Resume. No volume slider, no cover art.
 - **D22:** 2a comes before Milestone 1b and before the Milestone 1 soak test, at Jim's request. Milestone 1 works in real use.
 - The known-tags allowlist (spec §13.1) is deferred to Milestone 3, with tag overrides.
+- **D23 (after first use):** one Board, no named sets, no export/import. No Space shortcut. Untagged playlists hidden by default. A labelled **Add to Board** button. Song counts on rows. The criteria below are updated to match.
 
 ## Scope
 
 **In:**
 - tag parsing and the Library grouped by tag
-- several named session sets: create, rename, delete, switch
-- starring playlists into the current set from the Library and the palette
+- one Board, filled with **Add to Board** from the Library and the palette
 - the Board
 - the quick-switch palette
 - keyboard shortcuts
 - now playing with Next
 - hash routing
-- JSON export and import
 - a cached library for instant start-up
 
 **Out (2b or later):**
@@ -42,28 +41,29 @@ Before a session, I star the 5–9 playlists I'll need. During the session, the 
 - [ ] Tags group case-insensitively, displayed in their most common spelling.
 - [ ] The Library shows sections by tag (A–Z, Untagged last), with short names sorted A–Z inside each. The filter matches the tag or the name.
 
-### US-2a-2: Session sets
-- [ ] A star on each Library row adds the playlist to, or removes it from, the **current** set.
-- [ ] Sets can be created, renamed, deleted (with a confirm) and switched from a set picker. There is always at least one set.
-- [ ] Set items are stored as **scene** objects (`{id, playlistId, name}`), not bare IDs (D5).
-- [ ] Sets survive reload and logout. `navigator.storage.persist()` is requested on the first save.
+### US-2a-2: The Board's playlists
+- [ ] Each Library row has a large, labelled **Add to Board** / **On Board** toggle (D23). The palette has a smaller one.
+- [ ] Board items are stored as **scene** objects (`{id, playlistId, name}`), not bare IDs (D5).
+- [ ] The Board survives reload and logout. It is saved in this browser's `localStorage` only. `navigator.storage.persist()` is requested on the first save.
+- [ ] Library and palette rows show the song count (D23).
+- [ ] Untagged playlists are hidden in the Library and palette, with a **Show N untagged** link (D23).
 
 ### US-2a-3: Board
 - [ ] `#/board` shows the current set as large tiles in sections by tag (D20). Each tile shows the cover, short name, number key, and its play state (starting, playing, failed with reason and **Try again**).
 - [ ] Click a tile to play it through the same pipeline as Milestone 1.
 - [ ] Drag a tile within its section to reorder. Section headers have move up and move down.
-- [ ] An empty set shows "Star playlists in the Library to add them here", with a link.
-- [ ] A playlist in the set that's no longer in the library shows as unavailable, with a remove button.
+- [ ] An empty Board points to **Add to Board** in the Library, with a link.
+- [ ] A playlist on the Board that's no longer in the library shows as unavailable, with a remove button.
 
 ### US-2a-4: Quick switch
 - [ ] `Cmd/Ctrl+K` or `/` opens a palette over the **whole** library from anywhere. It opens instantly, with no API call.
 - [ ] Typing fuzzy-matches short names and tags. Results are grouped by tag, with the best matches first.
-- [ ] `↑`/`↓` move, `Enter` plays, `Shift+Enter` (or the star) adds to or removes from the current set, `Esc` closes.
+- [ ] `↑`/`↓` move, `Enter` plays, `Shift+Enter` (or the button) adds to or removes from the Board, `Esc` closes.
 - [ ] A visible **All playlists** button opens it with the mouse.
 
 ### US-2a-5: Keyboard
 - [ ] `1`–`9` play the matching Board tile, from any view.
-- [ ] `Space` toggles pause and resume.
+- [ ] `Space` does nothing, and never re-presses a focused tile (D23). Pause/Resume is a button.
 - [ ] Shortcuts are ignored while typing in a field, or when Cmd, Ctrl or Alt is held.
 
 ### US-2a-6: Now playing
@@ -71,9 +71,8 @@ Before a session, I star the 5–9 playlists I'll need. During the session, the 
 - [ ] **Next** skips a track on the chosen device (`POST /me/player/next`).
 - [ ] If Spotify is playing something this app didn't start, the bar says so (for example "Spotify is playing another playlist").
 
-### US-2a-7: Routing, export, cache
-- [ ] Tabs **Board** and **Library** switch between `#/board` and `#/library`. The default is the Board when the current set has items, otherwise the Library.
-- [ ] **Export** downloads all sets as JSON. **Import** validates the file, shows what it contains, and replaces the sets after a confirm.
+### US-2a-7: Routing and cache
+- [ ] Tabs **Board** and **Library** switch between `#/board` and `#/library`. The default is the Board when it has items, otherwise the Library.
 - [ ] The library is cached in `localStorage` with a timestamp. On load the cached list shows at once and is refreshed in the background. Logout clears the cache.
 
 ## Technical design
@@ -84,15 +83,15 @@ src/
     search.ts        fuzzy scoring over short name + tag (pure, tested)
     libraryStore.ts  fetch, cache in localStorage (cache.library), subscribe
   sets/
-    sets.ts          SessionSet / Scene types, pure operations: add, remove, toggle,
-                     move within section, move section, rename, sections() (tested)
+    sets.ts          SessionSet / Scene types, pure operations: toggle, remove,
+                     move within section, move section, sections() (tested)
     setsStore.ts     persistence (sets.v1), current set, storage.persist()
-    exportImport.ts  serialise, validate (tested)
+    validate.ts      validates the stored Board document (tested)
   playback/
     nowPlaying.ts    visible-only polling of GET /me/player
   ui/
     router.ts        hash route hook
-    Board.tsx  Tile.tsx  Palette.tsx  SetPicker.tsx  shortcuts.ts
+    Board.tsx  Library.tsx  Palette.tsx  shortcuts.ts
 ```
 - The storage namespace `cache.*` is new. It's cleared on logout, like `auth.*`.
 - The sets document is versioned (`{version: 1, currentId, sets: [...]}`) so later milestones can migrate it.
@@ -100,5 +99,5 @@ src/
 
 ## Definition of done
 - [ ] Acceptance criteria pass by hand in Chrome or Edge, against real Spotify.
-- [ ] Unit tests: tags, search, set operations, board order, export/import validation.
+- [ ] Unit tests: tags, search, Board operations and order, stored-document validation.
 - [ ] Deployed. The build ID shows in the Log.

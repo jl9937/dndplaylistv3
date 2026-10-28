@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
 import { groupByTag, parsePlaylistName } from '../library/tags';
-import type { Playlist } from '../spotify/types';
+import { trackCount, type Playlist } from '../spotify/types';
 import { Cover } from './Cover';
 import { StatusBadge, type ItemStatus } from './Status';
 
+export function songs(p: Playlist): string | null {
+  const n = trackCount(p);
+  return n === undefined ? null : `${n} ${n === 1 ? 'song' : 'songs'}`;
+}
+
 export function Library({
   library,
+  showUntagged,
+  onShowUntagged,
   statusOf,
   inSet,
   onPlay,
@@ -15,6 +22,8 @@ export function Library({
   onChooseDevice,
 }: {
   library: LibraryState;
+  showUntagged: boolean;
+  onShowUntagged: (show: boolean) => void;
   statusOf: (playlistId: string) => ItemStatus;
   inSet: (playlistId: string) => boolean;
   onPlay: (p: Playlist) => void;
@@ -23,12 +32,17 @@ export function Library({
   onChooseDevice: () => void;
 }) {
   const [filter, setFilter] = useState('');
-  const groups = useMemo(() => {
-    if (library.status !== 'ok') return [];
+  const { groups, untagged } = useMemo(() => {
+    if (library.status !== 'ok') return { groups: [], untagged: 0 };
     const f = filter.trim().toLocaleLowerCase();
-    const shown = f ? library.playlists.filter((p) => p.name.toLocaleLowerCase().includes(f)) : library.playlists;
-    return groupByTag(shown, (p) => p.name);
-  }, [library, filter]);
+    const matching = f ? library.playlists.filter((p) => p.name.toLocaleLowerCase().includes(f)) : library.playlists;
+    const all = groupByTag(matching, (p) => p.name);
+    const untaggedGroup = all.find((g) => g.key === '');
+    return {
+      groups: showUntagged ? all : all.filter((g) => g.key !== ''),
+      untagged: untaggedGroup?.items.length ?? 0,
+    };
+  }, [library, filter, showUntagged]);
 
   if (library.status === 'loading') return <p className="state">Loading playlists…</p>;
   if (library.status === 'error') {
@@ -44,7 +58,7 @@ export function Library({
       <input
         className="filter"
         type="search"
-        placeholder={`Filter ${library.playlists.length} playlists…`}
+        placeholder="Filter playlists…"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         aria-label="Filter playlists"
@@ -70,20 +84,21 @@ export function Library({
                       <Cover images={p.images} />
                       <span className="meta">
                         <span className="name">{parsePlaylistName(p.name).shortName}</span>
-                        {p.owner.id !== library.myId && (
-                          <span className="owner">by {p.owner.display_name ?? p.owner.id}</span>
-                        )}
+                        <span className="owner">
+                          {[songs(p), p.owner.id !== library.myId ? `by ${p.owner.display_name ?? p.owner.id}` : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
                       </span>
                       <StatusBadge s={s} />
                     </button>
                     <button
-                      className={`icon star${starred ? ' on' : ''}`}
+                      className={`fav${starred ? ' on' : ''}`}
                       onClick={() => onToggleSet(p)}
                       aria-pressed={starred}
-                      aria-label={starred ? 'Remove from current set' : 'Add to current set'}
-                      title={starred ? 'Remove from current set' : 'Add to current set'}
+                      title={starred ? 'Remove from the Board' : 'Add to the Board'}
                     >
-                      {starred ? '★' : '☆'}
+                      <span aria-hidden>{starred ? '★' : '☆'}</span> {starred ? 'On Board' : 'Add to Board'}
                     </button>
                   </div>
                   {s.status === 'failed' && (
@@ -99,7 +114,17 @@ export function Library({
           </ul>
         </div>
       ))}
-      {groups.length === 0 && <p className="state">No playlists match “{filter}”.</p>}
+      {groups.length === 0 && (
+        <p className="state">{filter ? `No ${showUntagged ? '' : 'tagged '}playlists match “${filter}”.` : 'No tagged playlists.'}</p>
+      )}
+      {untagged > 0 && (
+        <p className="hint subtle untagged-toggle">
+          <button className="link" onClick={() => onShowUntagged(!showUntagged)}>
+            {showUntagged ? `Hide ${untagged} untagged` : `Show ${untagged} untagged`}
+          </button>{' '}
+          (playlists without a <code>Tag:</code> prefix)
+        </p>
+      )}
     </section>
   );
 }

@@ -498,35 +498,6 @@ button.icon {
   align-items: center;
 }
 
-.toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: end;
-}
-
-.set-picker {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.set-picker label {
-  color: var(--muted);
-  font-size: 0.85em;
-}
-
-.set-picker .sep {
-  color: var(--line);
-}
-
-@media (max-width: 760px) {
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* library */
 
 .library-group h2 {
@@ -552,14 +523,47 @@ button.icon {
   min-width: 0;
 }
 
-.star {
-  font-size: 1.25rem;
+/* The favourite toggle: a real button with a label, easy to hit. */
+.fav {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  min-width: 9.5rem;
+  justify-content: center;
+  margin: 0.3rem 0.5rem 0.3rem 0;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
   color: var(--muted);
-  margin-right: 0.4rem;
 }
 
-.star.on {
+.fav span {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.fav.on {
+  background: rgba(212, 162, 76, 0.15);
+  border-color: var(--accent);
   color: var(--accent);
+}
+
+.fav.small {
+  min-height: 32px;
+  min-width: 5.5rem;
+  margin: 0;
+  padding: 0.2rem 0.6rem;
+}
+
+.palette-songs {
+  color: var(--muted);
+  font-size: 0.85em;
+  flex: none;
+}
+
+.untagged-toggle {
+  margin-top: 1.25rem;
 }
 
 /* board */

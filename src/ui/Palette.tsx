@@ -3,6 +3,7 @@ import { search } from '../library/search';
 import { groupByTag, labelFor, parsePlaylistName, tagKey, tagLabels } from '../library/tags';
 import type { Playlist } from '../spotify/types';
 import { Cover } from './Cover';
+import { songs } from './Library';
 
 const MAX_RESULTS = 60;
 
@@ -111,16 +112,18 @@ export function Palette({
                   >
                     <Cover images={p.images} className="palette-cover" />
                     <span className="palette-name">{parsePlaylistName(p.name).shortName}</span>
+                    {songs(p) && <span className="palette-songs">{songs(p)}</span>}
                     <button
-                      className={`icon star${starred ? ' on' : ''}`}
+                      className={`fav small${starred ? ' on' : ''}`}
                       tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleSet(p);
                       }}
-                      aria-label={starred ? 'Remove from current set' : 'Add to current set'}
+                      aria-pressed={starred}
+                      title={starred ? 'Remove from the Board' : 'Add to the Board'}
                     >
-                      {starred ? '★' : '☆'}
+                      <span aria-hidden>{starred ? '★' : '☆'}</span> {starred ? 'On Board' : 'Add'}
                     </button>
                   </div>
                 );
@@ -131,7 +134,7 @@ export function Palette({
         </div>
         <footer className="palette-help">
           <kbd>↑</kbd>
-          <kbd>↓</kbd> move · <kbd>Enter</kbd> play · <kbd>Shift</kbd>+<kbd>Enter</kbd> add to set · <kbd>Esc</kbd> close
+          <kbd>↓</kbd> move · <kbd>Enter</kbd> play · <kbd>Shift</kbd>+<kbd>Enter</kbd> add to Board · <kbd>Esc</kbd> close
         </footer>
       </div>
     </div>

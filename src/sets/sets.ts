@@ -35,8 +35,9 @@ export const KEYED_TILES = 9;
 
 const newId = () => crypto.randomUUID();
 
+/** One Board (D23). The doc shape allows more sets, but the app only ever uses one. */
 export function emptyDoc(): SetsDoc {
-  const first: SessionSet = { id: newId(), name: 'Session 1', scenes: [] };
+  const first: SessionSet = { id: newId(), name: 'Board', scenes: [] };
   return { version: 1, currentId: first.id, sets: [first] };
 }
 
@@ -135,26 +136,4 @@ export function syncNames(doc: SetsDoc, names: Map<string, string>): SetsDoc {
     return normalise({ ...set, scenes });
   });
   return changed ? { ...doc, sets } : doc;
-}
-
-export function createSet(doc: SetsDoc, name: string): SetsDoc {
-  const set: SessionSet = { id: newId(), name: name.trim() || `Session ${doc.sets.length + 1}`, scenes: [] };
-  return { ...doc, currentId: set.id, sets: [...doc.sets, set] };
-}
-
-export function renameSet(doc: SetsDoc, id: string, name: string): SetsDoc {
-  const trimmed = name.trim();
-  if (!trimmed) return doc;
-  return { ...doc, sets: doc.sets.map((s) => (s.id === id ? { ...s, name: trimmed } : s)) };
-}
-
-/** Delete a set. There is always at least one set. */
-export function deleteSet(doc: SetsDoc, id: string): SetsDoc {
-  const sets = doc.sets.filter((s) => s.id !== id);
-  if (sets.length === 0) return emptyDoc();
-  return { ...doc, sets, currentId: doc.currentId === id ? sets[0].id : doc.currentId };
-}
-
-export function switchSet(doc: SetsDoc, id: string): SetsDoc {
-  return doc.sets.some((s) => s.id === id) ? { ...doc, currentId: id } : doc;
 }

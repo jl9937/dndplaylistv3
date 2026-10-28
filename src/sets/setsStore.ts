@@ -1,8 +1,10 @@
-// Persistence for session sets (`sets.v1`). Survives logout; validated on load.
+// Persistence for the Board (`sets.v1`), in this browser's localStorage only: nothing is
+// stored on a server. Survives logout; validated on load. The document keeps a `sets`
+// array (always one set since D23) so the stored format never needs migrating.
 
 import { log } from '../diagnostics/log';
 import { read, write } from '../storage';
-import { parseDoc } from './exportImport';
+import { parseDoc } from './validate';
 import { emptyDoc, type SetsDoc } from './sets';
 
 const KEY = 'sets.v1';

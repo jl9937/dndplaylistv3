@@ -7,8 +7,9 @@ import { displayStatus, refreshNowPlaying, startNowPlaying } from './playback/no
 import { createRemoteDevice, pipeline } from './playback/pipeline';
 import { boardOrder, currentSet, hasPlaylist, moveScene, moveSection, removeScene, syncNames, togglePlaylist } from './sets/sets';
 import { updateSets } from './sets/setsStore';
+import { parsePlaylistName } from './library/tags';
 import { trackCount, type Playlist } from './spotify/types';
-import { write } from './storage';
+import { read, write } from './storage';
 import { Board } from './ui/Board';
 import { DebugPanel } from './ui/DebugPanel';
 import { DevicePicker } from './ui/DevicePicker';
@@ -19,7 +20,6 @@ import { Palette } from './ui/Palette';
 import { PlayerBar } from './ui/PlayerBar';
 import { ReadyCheck } from './ui/ReadyCheck';
 import { useRoute } from './ui/router';
-import { SetPicker } from './ui/SetPicker';
 import { useShortcuts } from './ui/shortcuts';
 import { itemStatus } from './ui/Status';
 
@@ -51,6 +51,11 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   const [showReady, setShowReady] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showUntagged, setShowUntaggedState] = useState(() => read<boolean>('prefs.showUntagged') ?? false);
+  const setShowUntagged = (v: boolean) => {
+    write('prefs.showUntagged', v);
+    setShowUntaggedState(v);
+  };
   const deviceSelect = useRef<HTMLSelectElement>(null);
 
   const set = currentSet(sets);
@@ -70,6 +75,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
 
   const device = useMemo(() => (pref ? createRemoteDevice(pref, deviceStore) : null), [pref]);
   const playlists = library.status === 'ok' ? library.playlists : [];
+  const visible = showUntagged ? playlists : playlists.filter((p) => parsePlaylistName(p.name).tag !== null);
   const byId = library.status === 'ok' ? library.byId : new Map<string, Playlist>();
 
   const statusOf = (playlistId: string) => itemStatus(playlistId, press, displayStatus(playlistId, press, now));
@@ -118,7 +124,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   };
 
   useShortcuts(
-    { openPalette: () => library.status === 'ok' && setShowPalette(true), playTile, togglePause },
+    { openPalette: () => library.status === 'ok' && setShowPalette(true), playTile },
     !showPalette,
   );
 
@@ -160,10 +166,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
         </nav>
       </header>
 
-      <div className="toolbar">
-        <DevicePicker ref={deviceSelect} pref={pref} onChange={choosePref} />
-        <SetPicker doc={sets} />
-      </div>
+      <DevicePicker ref={deviceSelect} pref={pref} onChange={choosePref} />
       {notice && <p className="notice">{notice}</p>}
 
       {showReady && library.status === 'ok' && (
@@ -186,6 +189,8 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       ) : (
         <Library
           library={library}
+          showUntagged={showUntagged}
+          onShowUntagged={setShowUntagged}
           statusOf={statusOf}
           inSet={inSet}
           onPlay={play}
@@ -196,7 +201,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       )}
 
       {showPalette && (
-        <Palette playlists={playlists} inSet={inSet} onPlay={play} onToggleSet={toggleSet} onClose={() => setShowPalette(false)} />
+        <Palette playlists={visible} inSet={inSet} onPlay={play} onToggleSet={toggleSet} onClose={() => setShowPalette(false)} />
       )}
     </div>
   );
