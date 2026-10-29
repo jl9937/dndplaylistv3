@@ -1213,3 +1213,66 @@ button.icon {
     grid-template-columns: 1fr;
   }
 }
+
+/* Milestone 5 spike (#/spike) */
+.spike {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.spike-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.spike-headline {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.spike-table-wrap {
+  overflow-x: auto;
+}
+
+.spike-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.spike-table th,
+.spike-table td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.spike-table th:first-child,
+.spike-table td:first-child {
+  text-align: left;
+  white-space: normal;
+}
+
+.spike-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.spike summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.spike-list h3 {
+  font-size: 0.95rem;
+  margin: 0.6rem 0 0.2rem;
+}
+
+.spike-list ul,
+ul.spike-list {
+  margin: 0.3rem 0;
+  padding-left: 1.2rem;
+}

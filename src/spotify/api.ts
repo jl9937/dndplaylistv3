@@ -1,5 +1,5 @@
 import { request, type RequestOptions } from './client';
-import type { Device, Me, Paging, PlaybackState, Playlist } from './types';
+import type { Device, Me, Paging, PlaybackState, Playlist, PlaylistEntry, Track } from './types';
 
 type Opts = Pick<RequestOptions, 'signal' | 'retry5xx'>;
 
@@ -17,6 +17,25 @@ export async function getMyPlaylists(): Promise<Playlist[]> {
     const page: Paging<Playlist | null> = (await request<Paging<Playlist | null>>('GET', next)).data!;
     // Spotify occasionally returns null entries for removed playlists.
     all.push(...page.items.filter((p): p is Playlist => p !== null));
+    next = page.next;
+  }
+  return all;
+}
+
+/**
+ * A playlist's tracks, in order. Only works for playlists I own or collaborate on (403
+ * otherwise). Local files and podcast episodes are skipped: they have no features.
+ */
+export async function getPlaylistTracks(playlistId: string, opts: Opts = {}): Promise<Track[]> {
+  const all: Track[] = [];
+  let next: string | null = `/playlists/${encodeURIComponent(playlistId)}/items?limit=50`;
+  while (next) {
+    const page: Paging<PlaylistEntry | null> = (await request<Paging<PlaylistEntry | null>>('GET', next, opts)).data!;
+    for (const e of page.items) {
+      const t = e?.item ?? e?.track;
+      if (!t?.id || e?.is_local || (t.type && t.type !== 'track')) continue;
+      all.push({ id: t.id, name: t.name ?? '', artists: (t.artists ?? []).map((a) => a.name).join(', ') });
+    }
     next = page.next;
   }
   return all;

@@ -129,6 +129,12 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 - Move or copy tracks between playlists, for example from a holding playlist into a themed one.
 - *Dream:* suggest which themed playlist each holding-playlist track belongs in, by clustering on audio features and naming conventions.
 
+**Jim's requests (D31, 2026-10-29),** in priority order:
+1. **Skip and remove** in the docked player bar: skip to the next track *and* remove the current track from the playing playlist, so a track that doesn't fit is gone for this session and later ones. Only for playlists Jim owns. An **Undo** puts it back at its old position.
+2. **Outliers:** find tracks, or small groups of tracks, that don't fit the rest of their playlist, and remove them.
+3. **Sort a holding playlist:** for each track in an input playlist, recommend the playlists it fits, and **copy** it there. The input playlist is left as it is.
+4. **Tag a playlist:** add an existing tag to a playlist, which renames it in Spotify (adds `[Tag]`, D25).
+
 ### Later / ideas (not committed)
 - Per-scene "stingers": play one track, then return to the previous playlist.
 - One-shot sound effects (door slam, thunder, dragon roar) on a pad, using the Milestone 4 engine.
@@ -157,12 +163,12 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 | `streaming` | Web Playback SDK | 1b |
 | `user-read-email`, `user-read-private` | Required by the Web Playback SDK | 1b |
 | `user-read-currently-playing` | Now-playing strip (may be covered by `user-read-playback-state`) | 2, only if needed |
-| `playlist-modify-private`, `playlist-modify-public` | Studio: move or copy tracks between playlists | 5, requested only when the Studio is first opened |
+| `playlist-modify-private`, `playlist-modify-public` | Skip and remove, copy tracks between playlists, add a tag to a playlist's name (D31). Both cover removing items and changing a playlist's details. Scopes are asked for at login, not set in the developer dashboard | 5; when they are requested is decided in the spike |
 
 ## 10. Out of scope
 
-- Editing playlists before Milestone 5. From Milestone 5, only moving or copying tracks between existing playlists.
-- Renaming playlists in Spotify. Tag stripping is display-only (see [§13.1](#131-tags-from-playlist-names)).
+- Editing playlists before Milestone 5. From Milestone 5, only removing tracks, copying tracks between existing playlists, and adding a tag to a playlist's name (D31). No creating, deleting or reordering playlists.
+- Other renames in Spotify. Tag stripping stays display-only (see [§13.1](#131-tags-from-playlist-names)); the app only adds a tag (D31).
 - Reading the Spotify folder tree. The API does not support it, and reading the desktop app's local cache is fragile.
 - Multi-user accounts, sharing, or any server-side storage.
 - YouTube as an ambience source (adverts, and its terms forbid separating the audio from the player).
@@ -201,6 +207,7 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 | D28 | Ambience sound source | **Starter pack in the repo only**: audio files in `ambience/`, found at build time, named after the file. No upload, no IndexedDB. Jim adds the files (licences that allow a public repo), credited in `ambience/CREDITS.md` | Simplest; nothing stored in the browser. Changing sounds needs a commit. See [milestone-4.md](milestone-4.md) |
 | D29 | Pressing a tile with ambience | **Crossfade to the tile's preset over 3 s.** A tile without a preset leaves the ambience as it is | Lets a few tiles set the mood and the rest only change music |
 | D30 | Where the mixer lives | **An Ambience tab** (`#/ambience`), a compact control in the player dock, and an **≈** button on each tile to save the current mix | Keeps the Board's tiles large |
+| D31 | Milestone 5 scope (2026-10-29) | Four requests: **skip and remove** in the player bar, **outliers** within a playlist, **copy a holding playlist's tracks to recommended playlists**, and **add a tag** to a playlist (renamed in Spotify). See §7, Milestone 5 | The app gets write access to Jim's playlists, which supersedes D25's "the app stays read-only". Removing a track is undoable. Renaming only adds a tag |
 | D12 | Compact mode | **A then B.** (A) A button switches to a docked narrow strip: compact layout, and the window resizes and moves itself to the screen edge. (B) An always-on-top floating strip using Document Picture-in-Picture (Chrome/Edge), tested early in Milestone 2. | A is the reliable baseline. B is the target experience if the spike passes. See [§13.5](#135-compact-mode). |
 
 ### Open questions

@@ -18,6 +18,7 @@ import { trackCount, type Playlist } from './spotify/types';
 import { write } from './storage';
 import { Ambience, AmbienceMini } from './ui/Ambience';
 import { Board, type TileAmbience } from './ui/Board';
+import { Spike } from './ui/Spike';
 import { canFloat } from './ui/compact';
 import { DebugPanel } from './ui/DebugPanel';
 import { DevicePicker } from './ui/DevicePicker';
@@ -257,6 +258,8 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
 
       {route === 'ambience' ? (
         <Ambience engine={ambience} state={amb} />
+      ) : route === 'spike' && library.status === 'ok' ? (
+        <Spike playlists={library.playlists} myId={library.myId} />
       ) : route === 'board' && library.status === 'ok' ? (
         <Board
           board={board}

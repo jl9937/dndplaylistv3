@@ -49,6 +49,26 @@ export interface PlaybackState {
   timestamp?: number;
 }
 
+/** A playlist entry. `item` is the 2026 field; `track` is its deprecated twin. */
+export interface PlaylistEntry {
+  is_local?: boolean;
+  item?: EntryTrack | null;
+  track?: EntryTrack | null;
+}
+interface EntryTrack {
+  id: string | null;
+  type?: string;
+  name?: string;
+  artists?: { name: string }[];
+}
+
+/** The fields Studio uses from a playlist's track. */
+export interface Track {
+  id: string;
+  name: string;
+  artists: string;
+}
+
 export function trackCount(p: Playlist): number | undefined {
   return p.items?.total ?? p.tracks?.total ?? undefined;
 }
