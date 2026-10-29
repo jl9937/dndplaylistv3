@@ -108,19 +108,19 @@ For anything the names can't express. `tagRules` add a tag to every playlist who
 ## Using it
 
 1. **Log in** with Spotify.
-2. **Plays on:** choose the Spotify desktop app (suggested on first run if it's the only computer), a phone, or **This browser**. If the desktop app isn't open when you press a playlist, it plays in this window instead, with a notice.
-3. **Library:** playlists in cards, grouped by tag. Use the **pills** to show only some tags. **☆ Add** puts a playlist on the Board.
+2. **Plays on** (the button at the right of the bottom bar; its dot is green when ready): choose the Spotify desktop app (suggested on first run if it's the only computer), a phone, or **This browser**. If the desktop app isn't open when you press a playlist, it plays in this window instead, with a notice.
+3. **Library:** playlists in cards, grouped by tag, each with a square in its tag's colour. The **Tags** sidebar shows only some tags. **☆** puts a playlist on the Board; **⋯** has Play now, Edit tags and Open in Spotify.
 4. **Board:** your playlists as tiles in sections by tag. Click a tile or press **1–9**. Drag tiles to reorder within a section; ↑/↓ moves a whole section.
 5. **Any playlist:** press **Cmd+K** or **/**, type, then **Enter** to play or **Shift+Enter** to add it to the Board.
 6. **Bottom bar:** what's playing, **Pause/Resume** and **Next**. With **✓ Fade** on, a switch fades the old music out over 3 s, then the new playlist starts at full volume.
-7. **Compact** turns the window into a narrow strip (the installed app docks itself to the screen edge). **Float** opens the strip always-on-top, over Notion (Chrome or Edge).
+7. **⋯ → Compact** (top right) turns the window into a narrow strip (the installed app docks itself to the screen edge). **⋯ → Float** opens the strip always-on-top, over Notion (Chrome or Edge).
 8. **Ready check** before a session: login, device, a test play (then pause), shuffle and repeat.
 9. **Ambience:** looping background sounds (rain, fire, crowd…) from this computer, on top of the music, each with its own volume. Turn layers on in the **Ambience** tab, then use a tile's **≈** button to save that mix on the tile. Pressing the tile then crossfades to its ambience as the playlist starts. Sounds are the files in [`ambience/`](ambience/README.md), added by committing them.
 10. **Skip & remove** (bottom bar): a track that doesn't fit is skipped and removed from the playing playlist in Spotify, if the playlist is yours. **Undo** puts it back for 20 s. The first time, it asks you to log in again, to allow the app to change playlists.
 11. **Studio → Sort a holding playlist:** after **Scan**, choose your holding playlist (e.g. *For dnd sorting*). Each track gets up to 3 suggested playlists with the reason (shared composer or album), and **Copy** to add it there (undoable), or **Copy to another playlist…**. The holding playlist isn't changed.
     **Studio → Outliers:** **Scan** your playlists for tracks that sound unlike the rest of their playlist, with the reason. **Play** to listen, then **Remove** (undoable) or **Keep** (it fits; not suggested again).
-12. **Tag a playlist:** a Library card's **#** button adds one of your tags (as `[Tag]` at the end of its name) or removes one, renaming it in Spotify. **Undo** renames it back.
+12. **Tag a playlist:** a Library card's **⋯ → Edit tags…** adds one of your tags (as `[Tag]` at the end of its name) or removes one, renaming it in Spotify. **Undo** renames it back.
 
 Every press starts at a random track, shuffled, repeating the playlist. A tile shows **Playing** only once Spotify is seen playing it; otherwise **Failed** with the reason and what to do.
 
-**Log** (or `?debug` in the URL) opens the event log, with **Copy log** and fault-injection buttons for testing token refresh. Its header shows the **build ID** (commit and build time). After a deploy, an open app window keeps running the old build until you reload it (Cmd+Shift+R), so check the build ID before reporting a bug.
+**⋯ → Log** (or `?debug` in the URL) opens the event log, with **Copy log** and fault-injection buttons for testing token refresh. Its header shows the **build ID** (commit and build time). After a deploy, an open app window keeps running the old build until you reload it (Cmd+Shift+R), so check the build ID before reporting a bug.

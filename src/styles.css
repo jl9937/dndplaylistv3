@@ -1293,20 +1293,6 @@ button.icon {
   border-color: var(--accent);
 }
 
-/* A card's other tags, shown before its name in a tag group. */
-.tag-chip {
-  display: inline-block;
-  margin-right: 0.4rem;
-  padding: 0 0.45rem;
-  border-radius: 999px;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-size: 0.75em;
-  font-weight: 600;
-  line-height: 1.5;
-  vertical-align: 0.1em;
-}
-
 /* ---------- ambience (Milestone 4) ---------- */
 
 .tile-ambience {
@@ -1607,22 +1593,6 @@ button.quiet:hover:not(:disabled) {
 }
 
 /* Tag a playlist (D31 #4) */
-.tag-toggle {
-  flex: none;
-  min-height: 44px;
-  min-width: 44px;
-  margin: 0.3rem 0.5rem 0.3rem -0.2rem;
-  padding: 0.4rem 0.6rem;
-  font-weight: 600;
-  border-radius: 999px;
-  color: var(--muted);
-}
-
-.tag-toggle.on {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .tag-picker {
   display: flex;
   flex-wrap: wrap;
@@ -1785,4 +1755,154 @@ button.suggestion:hover:not(:disabled) {
 
 .ok {
   color: var(--ok);
+}
+
+/* Library (UI direction B): a tag sidebar, coloured squares, a star and a ⋯ menu per card. */
+.library {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.lib-side {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 2px;
+  padding-right: 1rem;
+  border-right: 1px solid var(--line);
+}
+
+.lib-side > button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0 0.6rem;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.lib-side > button .count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #7d6f62;
+}
+
+.lib-side > button:hover,
+.lib-side > button.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.lib-side > button.on .count {
+  color: var(--accent);
+}
+
+.lib-side .lib-untagged {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.tag-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.lib-main {
+  min-width: 0;
+}
+
+.lib-showing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.2rem 0.1rem 0.7rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+}
+
+.tag-square {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.name-prefix {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.row-main .star {
+  flex: none;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #8a7b6c;
+  font-size: 1.25rem;
+}
+
+.row-main .star:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.row-main .star.on {
+  color: var(--accent);
+}
+
+.card-menu {
+  flex: none;
+  margin-right: 0.3rem;
+}
+
+.card-menu .menu-button {
+  width: 32px;
+  min-height: 44px;
+  background: none;
+  border: none;
+}
+
+.card-menu .menu-button:hover {
+  background: var(--panel-2);
+}
+
+.menu .menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 0.6rem;
+  border-radius: 6px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.menu .menu-link:hover,
+.menu .menu-link:focus-visible {
+  background: var(--panel);
 }

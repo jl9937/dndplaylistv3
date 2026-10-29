@@ -103,12 +103,14 @@ export function TagPicker({
   allTags,
   busy,
   onRename,
+  onClose,
 }: {
   playlist: Playlist;
   /** Every tag in the library, in its usual spelling, A–Z. */
   allTags: string[];
   busy: boolean;
   onRename: (to: string) => void;
+  onClose: () => void;
 }) {
   const has = describePlaylist(playlist.name).tags.map(tagKey);
   const addable = allTags.filter((t) => !has.includes(tagKey(t)));
@@ -125,7 +127,12 @@ export function TagPicker({
           + {t}
         </button>
       ))}
-      <span className="hint subtle">Renames it in Spotify: “{playlist.name}”</span>
+      <span className="hint subtle">
+        Renames it in Spotify: “{playlist.name}”{' '}
+        <button className="link" onClick={onClose}>
+          Done
+        </button>
+      </span>
     </div>
   );
 }

@@ -58,3 +58,14 @@ describe('adding and removing a tag in a name (D31 #4)', () => {
     expect(markerTags('Town: Asian [Asian] [Calm]')).toEqual(['Asian', 'Calm']);
   });
 });
+
+describe('tag colours', () => {
+  it('are fixed for the main tags, any case, and stable for others', async () => {
+    const { tagColour, UNTAGGED_COLOUR } = await import('../src/library/tagColour');
+    expect(tagColour('Town')).toBe('#b8794a');
+    expect(tagColour('setting')).toBe(tagColour('Setting'));
+    expect(tagColour('Xanathar')).toBe(tagColour('xanathar'));
+    expect(tagColour('Xanathar')).toMatch(/^hsl\(\d+ 28% 46%\)$/);
+    expect(tagColour(null)).toBe(UNTAGGED_COLOUR);
+  });
+});

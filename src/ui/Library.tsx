@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
-import { describePlaylist, groupByTag, isListed, tagKey, tagLabels } from '../library/tags';
+import { tagColour } from '../library/tagColour';
+import { describePlaylist, groupByTag, isListed, parsePlaylistName, tagKey, tagLabels } from '../library/tags';
 import { songsLabel, type Playlist } from '../spotify/types';
 import { read, write } from '../storage';
-import { Cover } from './Cover';
+import { Menu } from './Menu';
 import { StatusBadge, type ItemStatus } from './Status';
 import { TagPicker, useRename } from './TagPicker';
 
@@ -31,7 +32,7 @@ export function Library({
   const [filter, setFilter] = useState('');
   const [tagging, setTagging] = useState<string | null>(null);
   const rename = useRename();
-  // Tag pills: toggles that narrow the Library to some tags. None selected shows all.
+  // The tag sidebar: toggles that narrow the Library to some tags. None selected shows all.
   const [picked, setPickedState] = useState<Set<string>>(() => new Set(read<string[]>('prefs.libraryTags') ?? []));
   const setPicked = (fn: (prev: Set<string>) => Set<string>) =>
     setPickedState((prev) => {
@@ -76,129 +77,168 @@ export function Library({
     );
   }
 
+  const totalShown = pills.reduce((n, g) => n + g.items.length, 0);
+
   return (
     <section className="library">
-      <input
-        className="filter"
-        type="search"
-        placeholder="Filter playlists…"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        aria-label="Filter playlists"
-      />
-      {pills.length > 1 && (
-        <div className="pills" role="group" aria-label="Show only these tags">
-          {pills.map((g) => (
-            <button
-              key={g.key || 'untagged'}
-              className={`pill${picked.has(g.key) ? ' on' : ''}`}
-              aria-pressed={picked.has(g.key)}
-              onClick={() => toggle(g.key)}
-            >
-              {g.label} <span className="count">{g.items.length}</span>
-            </button>
-          ))}
-          {anyPicked && (
-            <button className="link" onClick={() => setPicked(() => new Set())}>
-              Show all
-            </button>
-          )}
-        </div>
-      )}
-      {rename.line}
-      {library.refreshError && (
-        <p className="hint subtle">
-          Showing saved playlists; refreshing failed ({library.refreshError}). <button className="link" onClick={onRetry}>Retry</button>
-        </p>
-      )}
-      {groups.map((g) => (
-        <div className="library-group" key={g.key || 'untagged'}>
-          <h2>
+      <nav className="lib-side" aria-label="Tags">
+        <h4>Tags</h4>
+        <button className={anyPicked ? '' : 'on'} aria-pressed={!anyPicked} onClick={() => setPicked(() => new Set())}>
+          All playlists <span className="count">{totalShown}</span>
+        </button>
+        {pills.map((g) => (
+          <button key={g.key || 'untagged'} className={picked.has(g.key) ? 'on' : ''} aria-pressed={picked.has(g.key)} onClick={() => toggle(g.key)}>
+            <span className="tag-dot" style={{ background: tagColour(g.key ? g.label : null) }} aria-hidden />
             {g.label} <span className="count">{g.items.length}</span>
-          </h2>
-          <ul className="playlists">
-            {g.items.map((p) => {
-              const s = statusOf(p.id);
-              const starred = isOnBoard(p.id);
-              const mine = p.owner.id === library.myId;
-              const key = `${g.key}:${p.id}`; // a playlist with several tags appears in several groups
-              return (
-                <li key={p.id} className={`row ${s.status}`}>
-                  <div className="row-main">
-                    <button className="play" onClick={() => onPlay(p)}>
-                      <Cover images={p.images} />
-                      <span className="meta">
-                        <span className="name">
-                          {/* Its other tags, so same-named playlists in one group stay distinct. */}
-                          {describePlaylist(p.name)
-                            .tags.filter((t) => tagKey(t) !== g.key)
-                            .map((t) => (
-                              <span key={t} className="tag-chip">
-                                {t}
-                              </span>
-                            ))}
-                          {describePlaylist(p.name).shortName}
-                        </span>
-                        <span className="owner">
-                          {[songsLabel(p), p.owner.id !== library.myId ? `by ${p.owner.display_name ?? p.owner.id}` : null]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                      </span>
-                      <StatusBadge s={s} />
-                    </button>
-                    <button
-                      className={`fav${starred ? ' on' : ''}`}
-                      onClick={() => onToggleBoard(p)}
-                      aria-pressed={starred}
-                      title={starred ? 'Remove from the Board' : 'Add to the Board'}
-                    >
-                      <span aria-hidden>{starred ? '★' : '☆'}</span> {starred ? 'On Board' : 'Add'}
-                    </button>
-                    {mine && (
-                      <button
-                        className={`tag-toggle${tagging === key ? ' on' : ''}`}
-                        onClick={() => setTagging(tagging === key ? null : key)}
-                        aria-expanded={tagging === key}
-                        aria-label={`Tags for ${describePlaylist(p.name).shortName}`}
-                        title="Add or remove a tag (renames it in Spotify)"
-                      >
-                        #
-                      </button>
-                    )}
-                  </div>
-                  {tagging === key && (
-                    <TagPicker
-                      playlist={p}
-                      allTags={allTags}
-                      busy={rename.saving}
-                      onRename={(to) => void rename.apply(p.id, p.name, to).then((ok) => ok && setTagging(null))}
-                    />
-                  )}
-                  {s.status === 'failed' && (
-                    <div className="failure">
-                      <span>{s.reason}</span>
-                      <button onClick={() => onPlay(p)}>Try again</button>
-                      <button onClick={onChooseDevice}>Choose another device</button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-      {groups.length === 0 && (
-        <p className="state">{filter ? `No ${showUntagged ? '' : 'tagged '}playlists match “${filter}”.` : 'No tagged playlists.'}</p>
-      )}
-      {untagged > 0 && (
-        <p className="hint subtle untagged-toggle">
-          <button className="link" onClick={() => onShowUntagged(!showUntagged)}>
+          </button>
+        ))}
+        {untagged > 0 && (
+          <button className="lib-untagged" onClick={() => onShowUntagged(!showUntagged)} title="Playlists with no Tag: or [Tag] in the name">
             {showUntagged ? `Hide ${untagged} untagged` : `Show ${untagged} untagged`}
-          </button>{' '}
-          (no <code>Tag:</code> or <code>[Tag]</code> in the name)
-        </p>
-      )}
+          </button>
+        )}
+      </nav>
+
+      <div className="lib-main">
+        <input
+          className="filter"
+          type="search"
+          placeholder="Filter playlists…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          aria-label="Filter playlists"
+        />
+        {anyPicked && (
+          <p className="lib-showing">
+            Showing{' '}
+            {pills
+              .filter((g) => picked.has(g.key))
+              .map((g) => (
+                <span key={g.key || 'untagged'} className="chip">
+                  {g.label}
+                  <button className="icon" onClick={() => toggle(g.key)} aria-label={`Stop showing only ${g.label}`}>
+                    ×
+                  </button>
+                </span>
+              ))}
+          </p>
+        )}
+        {rename.line}
+        {library.refreshError && (
+          <p className="hint subtle">
+            Showing saved playlists; refreshing failed ({library.refreshError}).{' '}
+            <button className="link" onClick={onRetry}>
+              Retry
+            </button>
+          </p>
+        )}
+        {groups.map((g) => (
+          <div className="library-group" key={g.key || 'untagged'}>
+            <h2>
+              {g.label} <span className="count">{g.items.length}</span>
+            </h2>
+            <ul className="playlists">
+              {g.items.map((p) => {
+                const s = statusOf(p.id);
+                const starred = isOnBoard(p.id);
+                const mine = p.owner.id === library.myId;
+                const key = `${g.key}:${p.id}`; // a playlist with several tags appears in several groups
+                const d = describePlaylist(p.name);
+                const prefix = parsePlaylistName(p.name).tag;
+                const others = d.tags.filter((t) => tagKey(t) !== g.key);
+                return (
+                  <li key={p.id} className={`row ${s.status}`}>
+                    <div className="row-main">
+                      <button className="play" onClick={() => onPlay(p)} title={`Play ${p.name}`}>
+                        <TagSquare name={d.shortName} tag={d.tags[0] ?? null} />
+                        <span className="meta">
+                          <span className="name">
+                            {prefix && <span className="name-prefix">{prefix}: </span>}
+                            {d.shortName}
+                          </span>
+                          <span className="owner">
+                            {[songsLabel(p), others.length ? others.join(', ') : null, mine ? null : `by ${p.owner.display_name ?? p.owner.id}`]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </span>
+                        <StatusBadge s={s} />
+                      </button>
+                      <button
+                        className={`star${starred ? ' on' : ''}`}
+                        onClick={() => onToggleBoard(p)}
+                        aria-pressed={starred}
+                        aria-label={starred ? `Remove ${d.shortName} from the Board` : `Add ${d.shortName} to the Board`}
+                        title={starred ? 'On the Board: click to remove' : 'Add to the Board'}
+                      >
+                        <span aria-hidden>{starred ? '★' : '☆'}</span>
+                      </button>
+                      <Menu label={`More for ${d.shortName}`} className="card-menu">
+                        {(close) => (
+                          <>
+                            <button
+                              role="menuitem"
+                              onClick={() => {
+                                close();
+                                onPlay(p);
+                              }}
+                            >
+                              <span aria-hidden>▶</span> Play now
+                            </button>
+                            {mine && (
+                              <button
+                                role="menuitem"
+                                onClick={() => {
+                                  close();
+                                  setTagging(key);
+                                }}
+                              >
+                                Edit tags… <span className="menu-hint">renames it in Spotify</span>
+                              </button>
+                            )}
+                            <a role="menuitem" className="menu-link" href={`https://open.spotify.com/playlist/${p.id}`} target="_blank" rel="noreferrer" onClick={close}>
+                              Open in Spotify
+                            </a>
+                          </>
+                        )}
+                      </Menu>
+                    </div>
+                    {tagging === key && (
+                      <TagPicker
+                        playlist={p}
+                        allTags={allTags}
+                        busy={rename.saving}
+                        onRename={(to) => void rename.apply(p.id, p.name, to).then((ok) => ok && setTagging(null))}
+                        onClose={() => setTagging(null)}
+                      />
+                    )}
+                    {s.status === 'failed' && (
+                      <div className="failure">
+                        <span>{s.reason}</span>
+                        <button onClick={() => onPlay(p)}>Try again</button>
+                        <button onClick={onChooseDevice}>Choose another device</button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+        {groups.length === 0 && (
+          <p className="state">{filter ? `No ${showUntagged ? '' : 'tagged '}playlists match “${filter}”.` : 'No tagged playlists.'}</p>
+        )}
+      </div>
     </section>
+  );
+}
+
+/** The card's art (UI direction B): a square in its first tag's colour, with the name's first letter. */
+function TagSquare({ name, tag }: { name: string; tag: string | null }) {
+  const letter = [...name.replace(/^the\s+/i, '').trim()][0]?.toLocaleUpperCase() ?? '?';
+  return (
+    <span className="tag-square" style={{ background: tagColour(tag) }} aria-hidden>
+      {letter}
+    </span>
   );
 }
