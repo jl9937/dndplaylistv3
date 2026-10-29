@@ -1,6 +1,6 @@
 # Milestone 4: Ambience mixer
 
-Status: building, 2026-10-28 · Parent: [spec.md](spec.md) §13.3 · Builds on: [milestone-3.md](milestone-3.md)
+Status: shipped in **v1.0** (2026-10-29). Not yet tried in a real session (mixer and tile presets with a login) · Parent: [spec.md](spec.md) §13.3 · Builds on: [milestone-3.md](milestone-3.md)
 
 ## Goal
 Looping background sounds (rain, fire, tavern crowd…) play from this laptop, layered on top of the Spotify music. Each layer has its own volume. A Board tile can carry an ambience preset, so one press switches both the music and the ambience.

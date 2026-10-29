@@ -1,6 +1,6 @@
 # Product specification: D&D Playlist Manager
 
-Status: draft v3 (independent review applied) · Owner: Jim · Last updated: 2026-10-28
+Status: **v1.0** (2026-10-29); decisions D1–D36 in §11 · Owner: Jim · Last updated: 2026-10-29
 
 ## 1. Problem
 

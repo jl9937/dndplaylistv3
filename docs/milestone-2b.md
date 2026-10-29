@@ -1,6 +1,6 @@
 # Milestone 2b: Compact strip and floating window
 
-Status: built 2026-10-28. Compact checked in the browser; Float can only be checked in real Chrome or Edge (the embedded test browser can't open Picture-in-Picture windows) · Parent: [spec.md](spec.md) §13.5, D12 · Builds on: [milestone-2a.md](milestone-2a.md)
+Status: shipped in **v1.0** (2026-10-29). Compact checked in the browser; Float works in Chrome/Edge but was only checked by hand · Parent: [spec.md](spec.md) §13.5, D12 · Builds on: [milestone-2a.md](milestone-2a.md)
 
 ## Goal
 At the table, the app takes up a narrow strip beside Notion instead of a full window. Ideally that strip floats on top of everything, so I never have to dig for the app.

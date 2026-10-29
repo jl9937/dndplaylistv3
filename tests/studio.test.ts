@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getPlaylistTracks } from '../src/spotify/api';
-import { summarise } from '../src/studio/coverage';
+import { findOutliers } from '../src/studio/outliers';
 import { BATCH, fetchFeatures, spotifyIdOf, type Features } from '../src/studio/reccobeats';
 import { json, seedTokens, stubFetch } from './helpers';
 
@@ -88,28 +88,25 @@ describe('ReccoBeats', () => {
   });
 });
 
-describe('coverage summary', () => {
+describe('outliers', () => {
   const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X', position: n });
 
-  it('counts found tracks per playlist and overall, sharing tracks once', () => {
+  it('counts each playlist’s tracks, and those with features', () => {
     const features = new Map([
       [id(1), feat()],
       [id(2), feat()],
     ]);
-    const r = summarise(
+    const r = findOutliers(
       [
         { id: 'a', name: 'A', tracks: [t(1), t(2), t(3)] },
         { id: 'b', name: 'B', tracks: [t(2), t(4)] },
       ],
       features,
     );
-    expect(r.uniqueTracks).toBe(4);
-    expect(r.uniqueFound).toBe(2);
-    expect(r.playlists.map((p) => [p.tracks, p.found])).toEqual([
+    expect(r.map((p) => [p.tracks, p.found])).toEqual([
       [3, 2],
       [2, 1],
     ]);
-    expect(r.missing.map((m) => m.id)).toEqual([id(3), id(4)]);
   });
 
   const calmAndLoud = (calmCount: number) => {
@@ -120,7 +117,7 @@ describe('coverage summary', () => {
     loud.forEach((x, i) => features.set(x.id, feat({ energy: 0.9 - i * 0.01, tempo: 150 - i, loudness: -5 })));
     const intruder = t(99);
     features.set(intruder.id, feat({ energy: 0.95, tempo: 160, loudness: -4 }));
-    const r = summarise(
+    const r = findOutliers(
       [
         { id: 'calm', name: 'Calm', tracks: [...calm, intruder] },
         { id: 'loud', name: 'Loud', tracks: loud },
@@ -130,11 +127,10 @@ describe('coverage summary', () => {
     return { r, calm, intruder };
   };
 
-  it('tells calm and loud playlists apart, and flags the loud track in the calm one, saying why', () => {
-    const { r, calm, intruder } = calmAndLoud(9);
-    const [c, l] = r.playlists;
-    expect(c.nearestOwn).toBe(calm.length); // all but the intruder
-    expect(l.nearestOwn).toBe(5);
+  it('flags the loud track in the calm playlist, saying why, and nothing in the loud one', () => {
+    const { r, intruder } = calmAndLoud(9);
+    const [c, l] = r;
+    expect(l.outliers).toEqual([]);
     expect(c.outliers.map((o) => o.track.id)).toEqual([intruder.id]);
     const [first] = c.outliers[0].reasons;
     expect(['energy', 'tempo', 'loudness']).toContain(first.feature);
@@ -147,26 +143,26 @@ describe('coverage summary', () => {
     same.forEach((x, i) => features.set(x.id, feat({ energy: 0.5 + (i === 3 ? 0.002 : 0) })));
     const loud = Array.from({ length: 10 }, (_, i) => t(i + 30));
     loud.forEach((x, i) => features.set(x.id, feat({ energy: i / 10, tempo: 80 + i * 10 })));
-    const r = summarise(
+    const r = findOutliers(
       [
         { id: 's', name: 'Same', tracks: same },
         { id: 'l', name: 'Loud', tracks: loud },
       ],
       features,
     );
-    expect(r.playlists[0].outliers).toEqual([]);
+    expect(r[0].outliers).toEqual([]);
   });
 
   it('judges no outliers in a playlist with fewer than 8 found tracks', () => {
-    expect(calmAndLoud(6).r.playlists[0].outliers).toEqual([]);
+    expect(calmAndLoud(6).r[0].outliers).toEqual([]);
   });
 
   it('judges a track against its own playlist’s spread: a varied playlist flags nothing', () => {
     const features = new Map<string, Features>();
     const varied = Array.from({ length: 12 }, (_, i) => t(i + 1));
     varied.forEach((x, i) => features.set(x.id, feat({ energy: (i % 6) / 6, tempo: 60 + ((i * 37) % 100), valence: ((i * 5) % 12) / 12 })));
-    const r = summarise([{ id: 'v', name: 'Varied', tracks: varied }], features);
-    expect(r.playlists[0].outliers).toEqual([]);
+    const r = findOutliers([{ id: 'v', name: 'Varied', tracks: varied }], features);
+    expect(r[0].outliers).toEqual([]);
   });
 });
 
@@ -213,7 +209,7 @@ describe('feature cache size', () => {
 describe('tempo 0', () => {
   const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X', position: n });
 
-  it('counts as unknown: a chant with no beat isn’t flagged for it, and doesn’t drag the median', () => {
+  it('counts as unknown: a chant with no beat isn’t flagged for it', () => {
     const features = new Map<string, Features>();
     const tracks = Array.from({ length: 10 }, (_, i) => t(i + 1));
     tracks.forEach((x, i) => features.set(x.id, feat({ tempo: 100 + (i % 3), energy: 0.1 + (i % 4) * 0.01 })));
@@ -221,15 +217,14 @@ describe('tempo 0', () => {
     // The rest of the library, so z-scores have a realistic scale.
     const rest = Array.from({ length: 20 }, (_, i) => t(i + 40));
     rest.forEach((x, i) => features.set(x.id, feat({ tempo: 70 + i * 5, energy: i / 20, valence: (i % 5) / 5, loudness: -25 + i })));
-    const [p] = summarise(
+    const [p] = findOutliers(
       [
         { id: 'c', name: 'Cathedral', tracks },
         { id: 'r', name: 'Rest', tracks: rest },
       ],
       features,
-    ).playlists;
+    );
     expect(p.outliers).toEqual([]);
-    expect(p.median.tempo).toBeGreaterThanOrEqual(100);
   });
 });
 

@@ -1,6 +1,6 @@
 # Milestone 1b: In-browser player as automatic fallback
 
-Status: built 2026-10-28, after 2a and 2b (D22). Tested against a fake SDK and, in the browser, against the real SDK script with a fake token. Not yet tried with real Spotify playback · Parent: [spec.md](spec.md) · Builds on: [milestone-1.md](milestone-1.md)
+Status: shipped in **v1.0** (2026-10-29). Built against a fake SDK and the real SDK script; real playback through "This browser" is lightly tested · Parent: [spec.md](spec.md) · Builds on: [milestone-1.md](milestone-1.md)
 
 ## Goal
 

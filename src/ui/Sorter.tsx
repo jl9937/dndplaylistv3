@@ -4,7 +4,7 @@ import { loadLibrary } from '../library/libraryStore';
 import { canWritePlaylists, removeTrack, restoreTrack, type RemoveTarget } from '../playback/skipRemove';
 import { getPlaylistTracks } from '../spotify/api';
 import type { Playlist, Track } from '../spotify/types';
-import type { PlaylistInput } from '../studio/coverage';
+import type { PlaylistInput } from '../studio/outliers';
 import { featuresFor } from '../studio/featureCache';
 import type { Features } from '../studio/reccobeats';
 import { fileTrack, unfileTrack } from '../studio/filing';

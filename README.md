@@ -2,7 +2,7 @@
 
 A small web app for switching Spotify playlists quickly while running a D&D session. Before the game, pick a few playlists. During the game, switch between them with one click. Spotify does the playing; this app tells it what to play.
 
-Status: Milestones 1, 1b, 2a, 2b and most of 3 built and deployed. Next: Milestone 4 (ambience mixer). The Milestone 1 soak test is still to do.
+Status: **v1.0** (2026-10-29). Milestones 1–5 are built and deployed; see [Known limitations](#known-limitations) for what isn't.
 
 ## Docs
 
@@ -13,6 +13,8 @@ Status: Milestones 1, 1b, 2a, 2b and most of 3 built and deployed. Next: Milesto
 - [docs/milestone-2a.md](docs/milestone-2a.md): Milestone 2a (Board, session sets, tags, quick switch)
 - [docs/milestone-2b.md](docs/milestone-2b.md): Milestone 2b (compact strip, always-on-top floating strip)
 - [docs/milestone-3.md](docs/milestone-3.md): Milestone 3 (soft transitions, tag pills, docked player)
+- [docs/milestone-4.md](docs/milestone-4.md): Milestone 4 (ambience mixer, CC0 starter pack)
+- [docs/milestone-5.md](docs/milestone-5.md): Milestone 5 (Studio: skip and remove, outliers, sort a holding playlist, tag a playlist)
 
 ## Stack
 
@@ -45,6 +47,17 @@ The app deploys as a Worker with static assets only (no Worker script). [wrangle
 Leave **Cloudflare Access** off for the `workers.dev` URL (**Settings → Domains & Routes**). It adds a second login that can expire mid-session.
 
 Every push to `main` deploys to production. Branches and pull requests get preview URLs, which can't log in (they aren't registered redirect URIs). Security headers and the CSP come from [public/_headers](public/_headers) and apply in production only.
+
+## Known limitations
+
+As of v1.0:
+- **Not built:** resume position (return to a playlist where it left off) and an offline shell (a service worker so the window opens instantly), both from Milestone 3.
+- **Not yet done:** the Milestone 1 soak test (a long real-session run), a real-session check of the ambience mixer, and a tick-through of every milestone checklist. The app is in real use, but those checklists weren't ticked off item by item.
+- **Audio features** come from ReccoBeats, which knows about two thirds of Jim's tracks and sees orchestral scores as much alike. Outliers are suggestions to listen to; holding-playlist suggestions are right about half the time in the top 3 (research.md §7.2).
+- **One user:** the owner lock (D35) logs out any other Spotify account; there's no alert. Spotify's development mode also limits the app to accounts added in the developer dashboard.
+- **Accepted security risks** (D36): Spotify's player script runs in the app's origin without a fixed fingerprint, and ReccoBeats sees which track IDs are in your playlists.
+- **Browsers:** made for Chrome or Edge on a laptop (D8, D10). Float needs Chrome or Edge; Firefox and Safari are best effort; the app UI isn't designed for phones.
+- **Board tiles** still show playlist covers; the Library uses tag-coloured squares (D34).
 
 ## Local development
 

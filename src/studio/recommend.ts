@@ -4,7 +4,7 @@
 // one of its real playlists comes out on top.
 
 import type { Track } from '../spotify/types';
-import { DISTANCE_KEYS, known, type PlaylistInput } from './coverage';
+import { DISTANCE_KEYS, known, type PlaylistInput } from './outliers';
 import type { Features } from './reccobeats';
 
 export interface Weights {

@@ -5,7 +5,7 @@ import type { NowPlaying } from '../playback/nowPlaying';
 import { canWritePlaylists, removeTrack, restoreTrack, type RemoveTarget } from '../playback/skipRemove';
 import type { Playlist } from '../spotify/types';
 import { parsePlaylistId } from '../spotify/uri';
-import { MIN_FOR_OUTLIERS, type Outlier, type PlaylistCoverage } from '../studio/coverage';
+import { MIN_FOR_OUTLIERS, type Outlier, type PlaylistOutliers } from '../studio/outliers';
 import { scan, stopScan } from '../studio/outlierScan';
 import { evaluate, type EvalRow } from '../studio/recommend';
 import { useOutlierScan, usePref } from './hooks';
@@ -65,7 +65,7 @@ export function Studio({
   const playingId = now.state?.item?.id;
   const playingIn = parsePlaylistId(now.state?.context?.uri);
 
-  function remove(p: PlaylistCoverage, o: Outlier) {
+  function remove(p: PlaylistOutliers, o: Outlier) {
     if (!canWritePlaylists()) return setNeedsLogin(true);
     const key = keyOf(p.id, o.track.id);
     const target: RemoveTarget = { playlistId: p.id, playlistName: p.name, trackId: o.track.id, trackName: o.track.name };
@@ -79,7 +79,7 @@ export function Studio({
     );
   }
 
-  function undo(p: PlaylistCoverage, o: Outlier, positions: number[]) {
+  function undo(p: PlaylistOutliers, o: Outlier, positions: number[]) {
     const key = keyOf(p.id, o.track.id);
     const target: RemoveTarget = { playlistId: p.id, playlistName: p.name, trackId: o.track.id, trackName: o.track.name };
     setRow(key, { phase: 'restoring' });
@@ -96,7 +96,7 @@ export function Studio({
   const unkeep = (key: string) => setKept(kept.filter((k) => k !== key));
 
   const done = state.phase === 'done' ? state : null;
-  const visible = (p: PlaylistCoverage) => p.outliers.filter((o) => showKept || !keptSet.has(keyOf(p.id, o.track.id)));
+  const visible = (p: PlaylistOutliers) => p.outliers.filter((o) => showKept || !keptSet.has(keyOf(p.id, o.track.id)));
   const withSuggestions = done ? [...done.playlists].filter((p) => visible(p).length > 0).sort((a, b) => a.name.localeCompare(b.name)) : [];
   const total = done ? done.playlists.reduce((a, p) => a + p.outliers.filter((o) => !keptSet.has(keyOf(p.id, o.track.id))).length, 0) : 0;
   const keptCount = done ? done.playlists.reduce((a, p) => a + p.outliers.filter((o) => keptSet.has(keyOf(p.id, o.track.id))).length, 0) : 0;

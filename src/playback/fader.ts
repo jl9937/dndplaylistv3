@@ -59,4 +59,3 @@ export function createFader(enabled: () => boolean) {
   };
 }
 
-export type Fader = ReturnType<typeof createFader>;

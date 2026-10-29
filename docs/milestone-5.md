@@ -1,6 +1,6 @@
 # Milestone 5: Playlist Studio
 
-Status: building, 2026-10-29 · Parent: [spec.md](spec.md) §7, §13.4 · Research: [research.md §7.2](research.md#72-audio-features-for-the-playlist-studio)
+Status: shipped in **v1.0** (2026-10-29). Each part was checked against stubbed Spotify data; Jim has used skip and remove and the Studio's sorter and outliers for real · Parent: [spec.md](spec.md) §7, §13.4 · Research: [research.md §7.2](research.md#72-audio-features-for-the-playlist-studio)
 
 ## Goal
 Keep the playlists in shape: drop a track that doesn't fit while it plays, find outliers, sort a holding playlist into themed ones, and tag playlists, without leaving the app.

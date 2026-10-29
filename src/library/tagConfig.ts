@@ -1,7 +1,6 @@
 // Tag rules from config/tags.json (D24): extra tags and hide rules on top of the
 // "Tag: Name" convention. Bad rules are skipped and reported, never fatal.
 
-export type Matcher = { contains: string } | { startsWith: string } | { regex: string };
 
 export interface TagRule {
   tag: string;

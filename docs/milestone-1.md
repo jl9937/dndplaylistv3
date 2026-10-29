@@ -1,6 +1,6 @@
 # Milestone 1: Log in, list, play (remote control)
 
-Status: built 2026-10-28, awaiting real-Spotify testing and the soak test · Revised after review and grilling, 2026-10-28 · Parent: [spec.md](spec.md) · Next: [milestone-1b.md](milestone-1b.md)
+Status: shipped in **v1.0** (2026-10-29) and in use. The soak test (a long real-session run) is still to do, and the checklist below wasn't ticked off item by item · Revised after review and grilling, 2026-10-28 · Parent: [spec.md](spec.md) · Next: [milestone-1b.md](milestone-1b.md)
 
 ## Goal
 

@@ -5,7 +5,7 @@ import { log } from '../diagnostics/log';
 import { isListed } from '../library/tags';
 import { getPlaylistTracks } from '../spotify/api';
 import type { Playlist, Track } from '../spotify/types';
-import { MIN_FOR_OUTLIERS, summarise, type PlaylistCoverage, type PlaylistInput } from './coverage';
+import { findOutliers, MIN_FOR_OUTLIERS, type PlaylistInput, type PlaylistOutliers } from './outliers';
 import { featuresFor } from './featureCache';
 import type { Features } from './reccobeats';
 
@@ -17,7 +17,7 @@ export type ScanState =
       phase: 'done';
       at: number;
       /** Every scanned playlist, outliers included. */
-      playlists: PlaylistCoverage[];
+      playlists: PlaylistOutliers[];
       /** Playlists with too few tracks with features to judge. */
       tooShort: number;
       failed: string[];
@@ -65,15 +65,15 @@ export async function scan(playlists: Playlist[], deps: Deps = {}): Promise<void
       signal: ac.signal,
       onProgress: (done, of) => current() && set({ phase: 'features', done, of }),
     });
-    const report = summarise(inputs, features);
-    const outliers = report.playlists.reduce((a, p) => a + p.outliers.length, 0);
+    const report = findOutliers(inputs, features);
+    const outliers = report.reduce((a, p) => a + p.outliers.length, 0);
     log('app', `outlier scan: ${inputs.length} playlists, ${outliers} suggestions`);
     if (current())
       set({
         phase: 'done',
         at: Date.now(),
-        playlists: report.playlists,
-        tooShort: report.playlists.filter((p) => p.found < MIN_FOR_OUTLIERS).length,
+        playlists: report,
+        tooShort: report.filter((p) => p.found < MIN_FOR_OUTLIERS).length,
         failed,
         inputs,
         features,

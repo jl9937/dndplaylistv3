@@ -1,6 +1,6 @@
 # Milestone 2a: Board, session sets, tags, quick switch
 
-Status: building, 2026-10-28 · Parent: [spec.md](spec.md) · Builds on: [milestone-1.md](milestone-1.md) · Next: Milestone 2b (now-playing in the strip, compact mode, float spike)
+Status: shipped in **v1.0** (2026-10-29) and in use; later reshaped by D23 (one Board) and D34 (UI direction B). The checklist below wasn't ticked off item by item · Parent: [spec.md](spec.md) · Builds on: [milestone-1.md](milestone-1.md) · Next: Milestone 2b (now-playing in the strip, compact mode, float spike)
 
 ## Goal
 
