@@ -16,8 +16,29 @@ export const DISTANCE_KEYS = [
   'loudness',
 ] as const satisfies readonly (keyof Features)[];
 
-/** A track this far (in z-score units) from its playlist's centre counts as an outlier. */
-export const OUTLIER_DISTANCE = 2.5;
+/** Playlists with fewer found tracks than this have no meaningful centre: no outliers. */
+export const MIN_FOR_OUTLIERS = 8;
+/**
+ * A track is an outlier when its distance from the playlist's centre is this many robust
+ * spreads (MAD) above the playlist's median distance. Relative to the playlist's own spread,
+ * so a deliberately varied playlist flags less. (A fixed cut-off doesn't work: in 7
+ * dimensions a typical track is already about 2.6 z-units from the centre.)
+ */
+export const OUTLIER_SPREADS = 3;
+
+/** Why a track was flagged: a feature where it differs most from its playlist. */
+export interface OutlierReason {
+  feature: (typeof DISTANCE_KEYS)[number];
+  value: number;
+  /** The playlist's median for this feature. */
+  typical: number;
+}
+
+export interface Outlier {
+  track: Track;
+  distance: number;
+  reasons: OutlierReason[];
+}
 
 export interface PlaylistInput {
   id: string;
@@ -34,7 +55,7 @@ export interface PlaylistCoverage {
   median: Partial<Record<'tempo' | 'energy' | 'valence' | 'instrumentalness' | 'acousticness', number>>;
   /** Found tracks whose nearest playlist centre (leaving the track out of its own) is this one. */
   nearestOwn: number;
-  outliers: { track: Track; distance: number }[];
+  outliers: Outlier[];
 }
 
 export interface CoverageReport {
@@ -78,7 +99,7 @@ export function summarise(playlists: PlaylistInput[], features: Map<string, Feat
     const fs = p.tracks.map((t) => features.get(t.id)).filter((f): f is Features => !!f);
     const med = (k: keyof PlaylistCoverage['median'] & keyof Features) => median(fs.map((f) => f[k]));
     let nearestOwn = 0;
-    const outliers: PlaylistCoverage['outliers'] = [];
+    const scored: { track: Track; v: number[]; own: number[]; d: number }[] = [];
     for (const { track, v } of vecs) {
       if (vecs.length < 2) continue;
       // Leave the track out of its own centre, or it always looks closest to home.
@@ -86,10 +107,24 @@ export function summarise(playlists: PlaylistInput[], features: Map<string, Feat
         sum.map((s, i) => s - v[i]),
         vecs.length - 1,
       );
-      const dOwn = dist(v, own);
-      const nearer = groups.some((g) => g.p !== p && g.vecs.length > 0 && dist(v, centre(g.sum, g.vecs.length)) < dOwn);
+      const d = dist(v, own);
+      const nearer = groups.some((g) => g.p !== p && g.vecs.length > 0 && dist(v, centre(g.sum, g.vecs.length)) < d);
       if (!nearer) nearestOwn++;
-      if (dOwn > OUTLIER_DISTANCE) outliers.push({ track, distance: dOwn });
+      scored.push({ track, v, own, d });
+    }
+    const outliers: Outlier[] = [];
+    if (scored.length >= MIN_FOR_OUTLIERS) {
+      const ds = scored.map((x) => x.d);
+      const mid = median(ds)!;
+      const spread = 1.4826 * median(ds.map((d) => Math.abs(d - mid)))! || 1e-9;
+      for (const x of scored) {
+        if (x.d <= mid + OUTLIER_SPREADS * spread) continue;
+        const reasons = DISTANCE_KEYS.map((feature, i) => ({ feature, gap: Math.abs(x.v[i] - x.own[i]) }))
+          .sort((a, b) => b.gap - a.gap)
+          .slice(0, 2)
+          .map(({ feature }) => ({ feature, value: features.get(x.track.id)![feature], typical: median(fs.map((f) => f[feature]))! }));
+        outliers.push({ track: x.track, distance: x.d, reasons });
+      }
     }
     outliers.sort((a, b) => b.distance - a.distance);
     return {

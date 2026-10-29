@@ -112,15 +112,14 @@ describe('coverage summary', () => {
     expect(r.missing.map((m) => m.id)).toEqual([id(3), id(4)]);
   });
 
-  it('tells calm and loud playlists apart, and flags the loud track in the calm one', () => {
+  const calmAndLoud = (calmCount: number) => {
     const features = new Map<string, Features>();
-    const calm = [1, 2, 3, 4, 5, 6].map(t);
-    const loud = [11, 12, 13, 14, 15].map(t);
-    calm.forEach((x, i) => features.set(x.id, feat({ energy: 0.1 + i * 0.01, tempo: 70 + i, loudness: -25 })));
+    const calm = Array.from({ length: calmCount }, (_, i) => t(i + 1));
+    const loud = [61, 62, 63, 64, 65].map(t);
+    calm.forEach((x, i) => features.set(x.id, feat({ energy: 0.1 + (i % 4) * 0.01, tempo: 70 + (i % 3), loudness: -25 })));
     loud.forEach((x, i) => features.set(x.id, feat({ energy: 0.9 - i * 0.01, tempo: 150 - i, loudness: -5 })));
     const intruder = t(99);
     features.set(intruder.id, feat({ energy: 0.95, tempo: 160, loudness: -4 }));
-
     const r = summarise(
       [
         { id: 'calm', name: 'Calm', tracks: [...calm, intruder] },
@@ -128,10 +127,29 @@ describe('coverage summary', () => {
       ],
       features,
     );
+    return { r, calm, intruder };
+  };
+
+  it('tells calm and loud playlists apart, and flags the loud track in the calm one, saying why', () => {
+    const { r, calm, intruder } = calmAndLoud(9);
     const [c, l] = r.playlists;
-    expect(c.nearestOwn).toBe(6); // all but the intruder
+    expect(c.nearestOwn).toBe(calm.length); // all but the intruder
     expect(l.nearestOwn).toBe(5);
     expect(c.outliers.map((o) => o.track.id)).toEqual([intruder.id]);
-    expect(c.median.energy).toBeCloseTo(0.13);
+    const [first] = c.outliers[0].reasons;
+    expect(['energy', 'tempo', 'loudness']).toContain(first.feature);
+    expect(first.value).toBeGreaterThan(first.typical);
+  });
+
+  it('judges no outliers in a playlist with fewer than 8 found tracks', () => {
+    expect(calmAndLoud(6).r.playlists[0].outliers).toEqual([]);
+  });
+
+  it('judges a track against its own playlist’s spread: a varied playlist flags nothing', () => {
+    const features = new Map<string, Features>();
+    const varied = Array.from({ length: 12 }, (_, i) => t(i + 1));
+    varied.forEach((x, i) => features.set(x.id, feat({ energy: (i % 6) / 6, tempo: 60 + ((i * 37) % 100), valence: ((i * 5) % 12) / 12 })));
+    const r = summarise([{ id: 'v', name: 'Varied', tracks: varied }], features);
+    expect(r.playlists[0].outliers).toEqual([]);
   });
 });

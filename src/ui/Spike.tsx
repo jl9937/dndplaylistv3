@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { describePlaylist, isListed } from '../library/tags';
+import { isListed } from '../library/tags';
 import { getPlaylistTracks } from '../spotify/api';
 import type { Playlist } from '../spotify/types';
-import { summarise, type CoverageReport, type PlaylistInput } from '../studio/coverage';
+import { MIN_FOR_OUTLIERS, summarise, type CoverageReport, type Outlier, type PlaylistInput } from '../studio/coverage';
 import { fetchFeatures } from '../studio/reccobeats';
 
 // The Milestone 5 spike (research.md §7.2), at #/spike, not in the nav. Read-only: it reads
@@ -135,7 +135,7 @@ function Results({ report, failed }: { report: CoverageReport; failed: string[] 
           <tbody>
             {rows.map((p) => (
               <tr key={p.id}>
-                <td>{describePlaylist(p.name).shortName}</td>
+                <td>{p.name}</td>
                 <td>{p.tracks}</td>
                 <td>{pct(p.found, p.tracks)}</td>
                 <td>{p.found >= 2 ? pct(p.nearestOwn, p.found) : '–'}</td>
@@ -151,15 +151,19 @@ function Results({ report, failed }: { report: CoverageReport; failed: string[] 
       </div>
       <details>
         <summary>Outliers ({report.playlists.reduce((a, p) => a + p.outliers.length, 0)})</summary>
+        <p className="hint subtle">
+          Tracks much further from their playlist’s centre than its other tracks, with the two features that differ most. Playlists
+          with fewer than {MIN_FOR_OUTLIERS} found tracks are skipped.
+        </p>
         {report.playlists
           .filter((p) => p.outliers.length > 0)
           .map((p) => (
             <div key={p.id} className="spike-list">
-              <h3>{describePlaylist(p.name).shortName}</h3>
+              <h3>{p.name}</h3>
               <ul>
                 {p.outliers.map((o) => (
                   <li key={o.track.id}>
-                    {o.track.name} <span className="subtle">— {o.track.artists}</span>
+                    {o.track.name} <span className="subtle">— {o.track.artists}</span> · {why(o)}
                   </li>
                 ))}
               </ul>
@@ -180,6 +184,12 @@ function Results({ report, failed }: { report: CoverageReport; failed: string[] 
   );
 }
 
+/** `energy 0.92 (playlist 0.15), tempo 160 (playlist 104)` */
+function why(o: Outlier): string {
+  return o.reasons.map((r) => `${r.feature} ${fmt(r.feature, r.value)} (playlist ${fmt(r.feature, r.typical)})`).join(', ');
+}
+const fmt = (feature: string, v: number) => (feature === 'tempo' ? v.toFixed(0) : feature === 'loudness' ? `${v.toFixed(1)} dB` : v.toFixed(2));
+
 /** Plain text to paste back into the chat. */
 function reportText(r: CoverageReport, failed: string[]): string {
   const lines = [
@@ -188,7 +198,7 @@ function reportText(r: CoverageReport, failed: string[]): string {
     'playlist | tracks | found | closest-to-own | tempo | energy | valence | instrumental | acoustic | outliers',
     ...r.playlists.map((p) =>
       [
-        describePlaylist(p.name).shortName,
+        p.name,
         p.tracks,
         p.found,
         p.found >= 2 ? p.nearestOwn : '-',
@@ -197,7 +207,7 @@ function reportText(r: CoverageReport, failed: string[]): string {
         num(p.median.valence),
         num(p.median.instrumentalness),
         num(p.median.acousticness),
-        p.outliers.map((o) => `${o.track.name} (${o.track.artists})`).join('; ') || '-',
+        p.outliers.map((o) => `${o.track.name} (${o.track.artists}) [${why(o)}]`).join('; ') || '-',
       ].join(' | '),
     ),
     '',
