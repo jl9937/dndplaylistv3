@@ -40,6 +40,8 @@ export interface PlaylistRef {
   id: string;
   /** Track count, for the random start (D14). */
   total?: number;
+  /** Start at this track instead of a random one (Studio's Play). Shuffle still follows. */
+  startAt?: number;
 }
 
 class Superseded extends Error {}
@@ -241,7 +243,7 @@ export function createPipeline(opts: PipelineOptions = {}) {
       await fader.fadeOut(device, id, run.signal, () => step('Fading out…'));
 
       const offsetPosition =
-        playlist.total && playlist.total > 0 ? Math.floor(random() * playlist.total) : undefined;
+        playlist.startAt ?? (playlist.total && playlist.total > 0 ? Math.floor(random() * playlist.total) : undefined);
       let req: api.PlayRequest = { contextUri: playlistUri(playlistId), offsetPosition };
       step(offsetPosition === undefined ? 'Starting…' : `Starting at track ${offsetPosition + 1}…`);
       ({ id, req } = await sendWithRetry(device, id, req, run, step));

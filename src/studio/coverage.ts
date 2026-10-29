@@ -25,6 +25,8 @@ export const MIN_FOR_OUTLIERS = 8;
  * dimensions a typical track is already about 2.6 z-units from the centre.)
  */
 export const OUTLIER_SPREADS = 3;
+/** The smallest spread used, in z-units: in a playlist of near-identical tracks, a tiny difference isn't an outlier. */
+export const MIN_SPREAD = 0.25;
 
 /** Why a track was flagged: a feature where it differs most from its playlist. */
 export interface OutlierReason {
@@ -72,6 +74,9 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
+/** ReccoBeats reports tempo 0 when it finds no beat (chant, drones): unknown, not slow (D32). */
+const known = (f: Features, k: keyof Features) => !(k === 'tempo' && f.tempo <= 0);
+
 const dist = (a: number[], b: number[]) => Math.sqrt(a.reduce((sum, x, i) => sum + (x - b[i]) ** 2, 0));
 
 export function summarise(playlists: PlaylistInput[], features: Map<string, Features>): CoverageReport {
@@ -81,15 +86,21 @@ export function summarise(playlists: PlaylistInput[], features: Map<string, Feat
   // z-score each distance feature over every found track, once each.
   const found = [...unique.keys()].filter((id) => features.has(id));
   const stats = DISTANCE_KEYS.map((k) => {
-    const xs = found.map((id) => features.get(id)![k]);
+    const xs = found.map((id) => features.get(id)!).filter((f) => known(f, k)).map((f) => f[k]);
     const mean = xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
     const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / (xs.length || 1)) || 1;
     return { mean, sd };
   });
-  const vec = (f: Features) => DISTANCE_KEYS.map((k, i) => (f[k] - stats[i].mean) / stats[i].sd);
+  const vec = (f: Features) => DISTANCE_KEYS.map((k, i) => (known(f, k) ? (f[k] - stats[i].mean) / stats[i].sd : NaN));
 
   const groups = playlists.map((p) => {
     const vecs = p.tracks.filter((t) => features.has(t.id)).map((t) => ({ track: t, v: vec(features.get(t.id)!) }));
+    // An unknown value takes the playlist's own average, so it neither flags nor hides a track.
+    DISTANCE_KEYS.forEach((_, i) => {
+      const xs = vecs.map((x) => x.v[i]).filter((x) => !Number.isNaN(x));
+      const fill = xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+      for (const x of vecs) if (Number.isNaN(x.v[i])) x.v[i] = fill;
+    });
     const sum = DISTANCE_KEYS.map((_, i) => vecs.reduce((a, x) => a + x.v[i], 0));
     return { p, vecs, sum };
   });
@@ -97,7 +108,7 @@ export function summarise(playlists: PlaylistInput[], features: Map<string, Feat
 
   const report: PlaylistCoverage[] = groups.map(({ p, vecs, sum }) => {
     const fs = p.tracks.map((t) => features.get(t.id)).filter((f): f is Features => !!f);
-    const med = (k: keyof PlaylistCoverage['median'] & keyof Features) => median(fs.map((f) => f[k]));
+    const med = (k: keyof Features) => median(fs.filter((f) => known(f, k)).map((f) => f[k]));
     let nearestOwn = 0;
     const scored: { track: Track; v: number[]; own: number[]; d: number }[] = [];
     for (const { track, v } of vecs) {
@@ -116,13 +127,13 @@ export function summarise(playlists: PlaylistInput[], features: Map<string, Feat
     if (scored.length >= MIN_FOR_OUTLIERS) {
       const ds = scored.map((x) => x.d);
       const mid = median(ds)!;
-      const spread = 1.4826 * median(ds.map((d) => Math.abs(d - mid)))! || 1e-9;
+      const spread = Math.max(1.4826 * median(ds.map((d) => Math.abs(d - mid)))!, MIN_SPREAD);
       for (const x of scored) {
         if (x.d <= mid + OUTLIER_SPREADS * spread) continue;
         const reasons = DISTANCE_KEYS.map((feature, i) => ({ feature, gap: Math.abs(x.v[i] - x.own[i]) }))
           .sort((a, b) => b.gap - a.gap)
           .slice(0, 2)
-          .map(({ feature }) => ({ feature, value: features.get(x.track.id)![feature], typical: median(fs.map((f) => f[feature]))! }));
+          .map(({ feature }) => ({ feature, value: features.get(x.track.id)![feature], typical: med(feature)! }));
         outliers.push({ track: x.track, distance: x.d, reasons });
       }
     }

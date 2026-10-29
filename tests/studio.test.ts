@@ -141,6 +141,22 @@ describe('coverage summary', () => {
     expect(first.value).toBeGreaterThan(first.typical);
   });
 
+  it('doesn’t flag tiny differences in a playlist of near-identical tracks', () => {
+    const features = new Map<string, Features>();
+    const same = Array.from({ length: 10 }, (_, i) => t(i + 1));
+    same.forEach((x, i) => features.set(x.id, feat({ energy: 0.5 + (i === 3 ? 0.002 : 0) })));
+    const loud = Array.from({ length: 10 }, (_, i) => t(i + 30));
+    loud.forEach((x, i) => features.set(x.id, feat({ energy: i / 10, tempo: 80 + i * 10 })));
+    const r = summarise(
+      [
+        { id: 's', name: 'Same', tracks: same },
+        { id: 'l', name: 'Loud', tracks: loud },
+      ],
+      features,
+    );
+    expect(r.playlists[0].outliers).toEqual([]);
+  });
+
   it('judges no outliers in a playlist with fewer than 8 found tracks', () => {
     expect(calmAndLoud(6).r.playlists[0].outliers).toEqual([]);
   });
@@ -151,5 +167,80 @@ describe('coverage summary', () => {
     varied.forEach((x, i) => features.set(x.id, feat({ energy: (i % 6) / 6, tempo: 60 + ((i * 37) % 100), valence: ((i * 5) % 12) / 12 })));
     const r = summarise([{ id: 'v', name: 'Varied', tracks: varied }], features);
     expect(r.playlists[0].outliers).toEqual([]);
+  });
+});
+
+describe('feature cache', () => {
+  const tid = (n: number) => `C${String(n).padStart(21, '0')}`;
+  const lookups: string[][] = [];
+  const fakeFetch = (known: string[]) => async (ids: string[]) => {
+    lookups.push(ids);
+    return new Map(ids.filter((i) => known.includes(i)).map((i) => [i, feat()]));
+  };
+
+  it('asks ReccoBeats only about tracks it hasn’t seen, and re-asks about unknown ones after a month', async () => {
+    const { featuresFor, RECHECK_MISSING_MS } = await import('../src/studio/featureCache');
+    lookups.length = 0;
+    const known = [tid(1), tid(2)];
+    const first = await featuresFor([tid(1), tid(2), tid(3)], { fetch: fakeFetch(known), now: () => 1000 });
+    expect([...first.keys()]).toEqual([tid(1), tid(2)]);
+
+    await featuresFor([tid(1), tid(3), tid(4)], { fetch: fakeFetch(known), now: () => 2000 });
+    expect(lookups[1]).toEqual([tid(4)]); // 1 cached, 3 known to be missing
+
+    await featuresFor([tid(3)], { fetch: fakeFetch([tid(3)]), now: () => 1000 + RECHECK_MISSING_MS });
+    expect(lookups[2]).toEqual([tid(3)]);
+    const later = await featuresFor([tid(3)], { fetch: fakeFetch([]), now: () => 3000 + RECHECK_MISSING_MS });
+    expect(later.has(tid(3))).toBe(true);
+    expect(lookups).toHaveLength(3);
+  });
+});
+
+describe('tempo 0', () => {
+  const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X', position: n });
+
+  it('counts as unknown: a chant with no beat isn’t flagged for it, and doesn’t drag the median', () => {
+    const features = new Map<string, Features>();
+    const tracks = Array.from({ length: 10 }, (_, i) => t(i + 1));
+    tracks.forEach((x, i) => features.set(x.id, feat({ tempo: 100 + (i % 3), energy: 0.1 + (i % 4) * 0.01 })));
+    features.set(tracks[0].id, feat({ tempo: 0, energy: 0.11 }));
+    // The rest of the library, so z-scores have a realistic scale.
+    const rest = Array.from({ length: 20 }, (_, i) => t(i + 40));
+    rest.forEach((x, i) => features.set(x.id, feat({ tempo: 70 + i * 5, energy: i / 20, valence: (i % 5) / 5, loudness: -25 + i })));
+    const [p] = summarise(
+      [
+        { id: 'c', name: 'Cathedral', tracks },
+        { id: 'r', name: 'Rest', tracks: rest },
+      ],
+      features,
+    ).playlists;
+    expect(p.outliers).toEqual([]);
+    expect(p.median.tempo).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe('outlier scan', () => {
+  it('reads each playlist, notes the ones it can’t read, and reports outliers', async () => {
+    const { scan, getScan } = await import('../src/studio/outlierScan');
+    const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X', position: n });
+    const calm = Array.from({ length: 9 }, (_, i) => t(i + 1));
+    const intruder = t(99);
+    const features = new Map<string, Features>();
+    calm.forEach((x, i) => features.set(x.id, feat({ energy: 0.1 + (i % 4) * 0.01, tempo: 70 + (i % 3), loudness: -25 })));
+    features.set(intruder.id, feat({ energy: 0.95, tempo: 160, loudness: -4 }));
+    const pl = (pid: string) => ({ id: pid, name: `Town: ${pid}`, uri: '', images: null, owner: { id: 'jim' } });
+
+    await scan([pl('calm'), pl('broken')], {
+      getTracks: async (pid) => {
+        if (pid === 'broken') throw new Error('Forbidden');
+        return [...calm, intruder];
+      },
+      features: async () => features,
+    });
+    const s = getScan();
+    expect(s.phase).toBe('done');
+    if (s.phase !== 'done') return;
+    expect(s.failed).toEqual(['Town: broken: Forbidden']);
+    expect(s.playlists[0].outliers.map((o) => o.track.id)).toEqual([intruder.id]);
   });
 });

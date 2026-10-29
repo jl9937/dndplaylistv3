@@ -9,6 +9,7 @@ import { pipeline } from '../playback/pipeline';
 import { webPlayback } from '../player/instance';
 import { getBoard, subscribeBoard } from '../board/boardStore';
 import { read, write, type StorageKey } from '../storage';
+import { getScan, subscribeScan } from '../studio/outlierScan';
 
 export const useAuthStatus = () => useSyncExternalStore(subscribeAuth, getAuthStatus);
 export const usePressState = () => useSyncExternalStore(pipeline.subscribe, pipeline.getState);
@@ -32,3 +33,4 @@ export const useNowPlaying = () => useSyncExternalStore(subscribeNowPlaying, get
 export const useSdkStatus = () => useSyncExternalStore(webPlayback.subscribe, webPlayback.getStatus);
 export const useAutoplayBlocked = () => useSyncExternalStore(webPlayback.subscribe, webPlayback.isAutoplayBlocked);
 export const useAmbience = () => useSyncExternalStore(ambience.subscribe, ambience.getState);
+export const useOutlierScan = () => useSyncExternalStore(subscribeScan, getScan);

@@ -19,7 +19,8 @@ import { write } from './storage';
 import { Ambience, AmbienceMini } from './ui/Ambience';
 import { Board, type TileAmbience } from './ui/Board';
 import { useSkipRemove } from './ui/SkipRemove';
-import { Spike } from './ui/Spike';
+import { scannable } from './studio/outlierScan';
+import { Studio } from './ui/Studio';
 import { canFloat } from './ui/compact';
 import { DebugPanel } from './ui/DebugPanel';
 import { DevicePicker } from './ui/DevicePicker';
@@ -112,6 +113,13 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       chooseDevice();
     }
   };
+  /** Studio's Play: the playlist from that track, so the music carries on in the same mood. */
+  const playAt = (p: Playlist, position: number) => {
+    if (!playback.play({ id: p.id, total: trackCount(p), startAt: position }, pref)) {
+      setNotice('Choose where the music plays first.');
+      chooseDevice();
+    }
+  };
   /** Board tiles, the strip and number keys play a scene: its playlist, and its ambience (D29). */
   const playScene = (scene: Scene) => {
     if (scene.ambience) {
@@ -197,6 +205,9 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           <a href="#/ambience" aria-current={route === 'ambience' ? 'page' : undefined}>
             Ambience
           </a>
+          <a href="#/studio" aria-current={route === 'studio' ? 'page' : undefined}>
+            Studio
+          </a>
         </nav>
         {days !== null && days <= RELOGIN_WARN_DAYS && <span className="warn">Re-login needed in {days} days</span>}
         <nav className="actions">
@@ -260,8 +271,8 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
 
       {route === 'ambience' ? (
         <Ambience engine={ambience} state={amb} />
-      ) : route === 'spike' && library.status === 'ok' ? (
-        <Spike playlists={library.playlists} myId={library.myId} />
+      ) : route === 'studio' && library.status === 'ok' ? (
+        <Studio playlists={scannable(library.playlists, library.myId)} byId={byId} now={now} onPlayAt={playAt} />
       ) : route === 'board' && library.status === 'ok' ? (
         <Board
           board={board}

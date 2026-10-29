@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 
 // Hash routing (spec §7): no server-side fallback needed, and ?debug in the query survives.
-/** `spike` is the Milestone 5 coverage check: reachable by URL only, not in the nav. */
-export type Route = 'board' | 'library' | 'ambience' | 'spike';
-const ROUTES: Route[] = ['board', 'library', 'ambience', 'spike'];
+export type Route = 'board' | 'library' | 'ambience' | 'studio';
+const ROUTES: Route[] = ['board', 'library', 'ambience', 'studio'];
 
 function parse(): Route | null {
   const h = location.hash.replace(/^#\/?/, '');

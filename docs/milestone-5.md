@@ -13,15 +13,17 @@ Keep the playlists in shape: drop a track that doesn't fit while it plays, find 
 ## User stories and acceptance criteria
 
 ### US-5-1: Skip and remove (D31 #1)
-- [ ] The docked player bar has **Skip & remove**. It skips to the next track at once, then removes the track from the playing playlist in Spotify (every copy of it).
+- [x] The docked player bar has **Skip & remove**. It skips to the next track at once, then removes the track from the playing playlist in Spotify (every copy of it).
 - [ ] Only for playlists Jim owns. Otherwise, or when nothing or no playlist is playing, the button is disabled and its tooltip says why.
 - [ ] A line above the bar says what was removed from where, with **Undo** for 20 s. Undo puts the track back at its old position. A failure says why, and a failed Undo offers **Try again**.
 - [ ] Without write access, nothing is skipped or changed; the line asks Jim to log in again.
 - [ ] The song count is refreshed afterwards, so the random start (D14) stays in range.
 
 ### US-5-2: Outliers (D31 #2)
-- [ ] Per playlist, tracks much further from the playlist's centre than its other tracks, judged on energy, valence, danceability, acousticness, instrumentalness, tempo and loudness. Only playlists with at least 8 tracks that have features.
-- [ ] Each suggestion shows why ("tempo 176, playlist 111"), with **Play** to listen and **Remove** (undoable).
+- [ ] A **Studio** tab (`#/studio`, replacing the spike page). **Scan** reads all my tagged playlists; the results last until the page is reloaded.
+- [ ] Per playlist, tracks much further from the playlist's centre than its other tracks, judged on energy, valence, danceability, acousticness, instrumentalness, tempo and loudness. Only playlists with at least 8 tracks that have features. A tempo of 0 (no beat found) counts as unknown.
+- [ ] Each suggestion shows why ("tempo 176 (playlist 111)"), with **Play** (the playlist from that track, on the chosen device), **Remove** (undoable) and **Keep** ("it fits": not suggested again, remembered in this browser; **Show kept** brings them back).
+- [ ] Features are cached in this browser (`cache.features`), so a re-scan only asks ReccoBeats about new tracks. Tracks it didn't know are asked about again after a month.
 
 ### US-5-3: Sort a holding playlist (D31 #3)
 - [ ] Pick an input playlist. For each track, the playlists it most likely belongs in, best first, with **Copy** to add it there. The input playlist is not changed.
@@ -34,9 +36,12 @@ Keep the playlists in shape: drop a track that doesn't fit while it plays, find 
 src/spotify/api.ts        getPlaylistTracks (with positions), removeFromPlaylist, addToPlaylist
 src/playback/skipRemove.ts  what can be removed, remove (remembering the position), restore (tested)
 src/ui/SkipRemove.tsx     the button's state and the Undo line
-src/studio/               ReccoBeats client, coverage and outliers (spike, tested)
+src/studio/               ReccoBeats client, feature cache, coverage and outliers, the scan (tested)
+src/ui/Studio.tsx         the Studio tab: outlier review
 ```
 - **Removing** reads the playlist first to find the track's position (counting local files and episodes, as Spotify does), then sends `DELETE /playlists/{id}/items` with `{ items: [{ uri }] }`.
+- **Outliers:** distances in z-units over the whole scanned library. A track is an outlier when its distance from its playlist's centre (leaving itself out) is more than 3 robust spreads (MAD, at least 0.25) above the playlist's median distance.
+- **Play** starts the playlist at the track's position, then shuffles on (`PlaylistRef.startAt`).
 - **Undo** sends `POST /playlists/{id}/items` with `{ uris, position }`, with no automatic retry on a server error: if the first attempt landed, a retry would add the track twice.
 
 ## Definition of done

@@ -117,6 +117,14 @@ describe('play pipeline', () => {
     }
   });
 
+  it('starts at a chosen track instead of a random one (Studio’s Play)', async () => {
+    const { device, fake } = fakeDevice();
+    const p = createPipeline({ random: () => 0.9 }).press({ id: 'PL1', total: 50, startAt: 7 }, device);
+    await vi.advanceTimersByTimeAsync(3_000);
+    await p;
+    expect(fake.plays[0]).toEqual({ contextUri: 'spotify:playlist:PL1', offsetPosition: 7 });
+  });
+
   it('sends no offset when the track count is unknown', async () => {
     const { device, fake } = fakeDevice();
     const p = createPipeline().press({ id: 'PL1' }, device);
