@@ -26,7 +26,8 @@ Keep the playlists in shape: drop a track that doesn't fit while it plays, find 
 - [ ] Features are cached in this browser (`cache.features`), so a re-scan only asks ReccoBeats about new tracks. Tracks it didn't know are asked about again after a month.
 
 ### US-5-3: Sort a holding playlist (D31 #3)
-- [ ] Pick an input playlist. For each track, the playlists it most likely belongs in, best first, with **Copy** to add it there. The input playlist is not changed.
+- [ ] **Measure first:** after a scan, Studio's *How good would playlist suggestions be?* treats every track as new (all its memberships hidden) and reports how often one of its real playlists comes out first, or in the top 3 or 5, for each method: sound only, composer only, album only, and combinations, against a "biggest playlists" baseline. A hit needs evidence: a score of 0 never counts.
+- [ ] Pick an input playlist. For each track, the playlists it most likely belongs in, best first, with the reason ("3 tracks by Jesper Kyd") and **Copy** to add it there. The input playlist is not changed.
 
 ### US-5-4: Tag a playlist (D31 #4)
 - [ ] Each Library card for a playlist Jim owns has a **#** button. It opens a picker: **+ Tag** for every existing tag the playlist doesn't have, **× Tag** for each `[Tag]` already in its name.
@@ -43,11 +44,13 @@ src/playback/skipRemove.ts  what can be removed, remove (remembering the positio
 src/ui/SkipRemove.tsx     the button's state and the Undo line
 src/studio/               ReccoBeats client, feature cache, coverage and outliers, the scan (tested)
 src/ui/Studio.tsx         the Studio tab: outlier review
+src/studio/recommend.ts   buildIndex, suggest (composer, album, sound), evaluate (tested)
 src/library/tags.ts       addTagToName, removeTagFromName, markerTags (tested)
 src/ui/TagPicker.tsx      the picker under a Library card, and the rename line with Undo
 ```
 - **Removing** reads the playlist first to find the track's position (counting local files and episodes, as Spotify does), then sends `DELETE /playlists/{id}/items` with `{ items: [{ uri }] }`.
 - **Outliers:** distances in z-units over the whole scanned library. A track is an outlier when its distance from its playlist's centre (leaving itself out) is more than 3 robust spreads (MAD, at least 0.25) above the playlist's median distance.
+- **Suggestions** score each playlist: tracks sharing a composer (artist ID) and tracks from the same album, each divided by the playlist's size + 4 (so tiny playlists don't win on one match), plus how close the track sounds to the playlist's centre (exp(−d²/8) in z-units). Weights are chosen from the measurement.
 - **Play** starts the playlist at the track's position, then shuffles on (`PlaylistRef.startAt`).
 - **Renaming** sends `PUT /playlists/{id}` with `{ name }`, then updates the cached library at once (`renameLocally`).
 - **Undo** sends `POST /playlists/{id}/items` with `{ uris, position }`, with no automatic retry on a server error: if the first attempt landed, a retry would add the track twice.

@@ -28,7 +28,7 @@ describe('playlist tracks', () => {
       if (url.includes('offset=50')) return json(200, { items: [{ track: { id: id(3), name: 'Old field', artists: [] } }], next: null, total: 4 });
       return json(200, {
         items: [
-          { item: { id: id(1), type: 'track', name: 'One', artists: [{ name: 'A' }, { name: 'B' }] } },
+          { item: { id: id(1), type: 'track', name: 'One', artists: [{ id: 'a1', name: 'A' }, { name: 'B' }], album: { id: 'AL1' } } },
           { is_local: true, item: { id: null, name: 'Local' } },
           { item: { id: id(2), type: 'episode', name: 'Podcast' } },
           null,
@@ -38,8 +38,8 @@ describe('playlist tracks', () => {
       });
     });
     expect(await getPlaylistTracks('p')).toEqual([
-      { id: id(1), name: 'One', artists: 'A, B', position: 0 },
-      { id: id(3), name: 'Old field', artists: '', position: 4 },
+      { id: id(1), name: 'One', artists: 'A, B', artistKeys: ['a1', 'b'], album: 'AL1', position: 0 },
+      { id: id(3), name: 'Old field', artists: '', artistKeys: [], album: null, position: 4 },
     ]);
   });
 });

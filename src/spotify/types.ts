@@ -59,7 +59,8 @@ interface EntryTrack {
   id: string | null;
   type?: string;
   name?: string;
-  artists?: { name: string }[];
+  artists?: { id?: string | null; name: string }[];
+  album?: { id?: string | null; name?: string } | null;
 }
 
 /** The fields Studio uses from a playlist's track. */
@@ -67,6 +68,10 @@ export interface Track {
   id: string;
   name: string;
   artists: string;
+  /** Artist IDs (names when there's no ID), for recommendations (US-5-3). */
+  artistKeys?: string[];
+  /** Album ID, for recommendations. */
+  album?: string | null;
   /** Index in the playlist, counting local files and episodes too: what Spotify's position means. */
   position: number;
 }

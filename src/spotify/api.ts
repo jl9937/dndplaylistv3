@@ -36,7 +36,14 @@ export async function getPlaylistTracks(playlistId: string, opts: Opts = {}): Pr
       const t = e?.item ?? e?.track;
       const at = position++;
       if (!t?.id || e?.is_local || (t.type && t.type !== 'track')) continue;
-      all.push({ id: t.id, name: t.name ?? '', artists: (t.artists ?? []).map((a) => a.name).join(', '), position: at });
+      all.push({
+        id: t.id,
+        name: t.name ?? '',
+        artists: (t.artists ?? []).map((a) => a.name).join(', '),
+        artistKeys: (t.artists ?? []).map((a) => a.id || a.name.toLocaleLowerCase()),
+        album: t.album?.id ?? null,
+        position: at,
+      });
     }
     next = page.next;
   }

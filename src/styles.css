@@ -1319,3 +1319,35 @@ button.icon {
 .notice.bad {
   color: var(--bad);
 }
+
+.studio-accuracy summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.studio-accuracy {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.studio-table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-table th,
+.studio-table td {
+  padding: 0.3rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.studio-table th:first-child,
+.studio-table td:first-child {
+  text-align: left;
+}
+
+.studio-table th {
+  color: var(--muted);
+}

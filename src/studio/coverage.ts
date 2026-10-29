@@ -75,7 +75,7 @@ const median = (xs: number[]) => {
 };
 
 /** ReccoBeats reports tempo 0 when it finds no beat (chant, drones): unknown, not slow (D32). */
-const known = (f: Features, k: keyof Features) => !(k === 'tempo' && f.tempo <= 0);
+export const known = (f: Features, k: keyof Features) => !(k === 'tempo' && f.tempo <= 0);
 
 const dist = (a: number[], b: number[]) => Math.sqrt(a.reduce((sum, x, i) => sum + (x - b[i]) ** 2, 0));
 

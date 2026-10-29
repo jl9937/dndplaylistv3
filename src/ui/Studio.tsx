@@ -7,6 +7,7 @@ import type { Playlist } from '../spotify/types';
 import { parsePlaylistId } from '../spotify/uri';
 import { MIN_FOR_OUTLIERS, type Outlier, type PlaylistCoverage } from '../studio/coverage';
 import { scan, stopScan } from '../studio/outlierScan';
+import { evaluate, type EvalRow } from '../studio/recommend';
 import { useOutlierScan, usePref } from './hooks';
 
 // The Studio tab (Milestone 5). For now, outlier review (US-5-2): suggestions to listen to,
@@ -135,6 +136,7 @@ export function Studio({
             )}
           </p>
           {done.failed.length > 0 && <p className="error">Couldn’t read: {done.failed.join('; ')}</p>}
+          <Accuracy key={done.at} run={() => evaluate(done.inputs, done.features)} />
           {withSuggestions.map((p) => {
             const playlist = byId.get(p.id);
             return (
@@ -198,6 +200,68 @@ export function Studio({
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * How good playlist suggestions would be (US-5-3), measured on this library: each track is
+ * treated as new, and we check whether one of its own playlists comes out on top.
+ */
+function Accuracy({ run }: { run: () => EvalRow[] }) {
+  const [rows, setRows] = useState<EvalRow[] | null>(null);
+  const [working, setWorking] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const pct = (n: number, of: number) => `${Math.round((100 * n) / (of || 1))}%`;
+  const text = (rs: EvalRow[]) =>
+    [`Suggestion accuracy (${rs[0]?.tracks ?? 0} tracks, each treated as new)`, 'method | top 1 | top 3 | top 5']
+      .concat(rs.map((r) => `${r.label} | ${pct(r.hit1, r.tracks)} | ${pct(r.hit3, r.tracks)} | ${pct(r.hit5, r.tracks)}`))
+      .join('\n');
+  return (
+    <details className="studio-accuracy">
+      <summary>How good would playlist suggestions be?</summary>
+      <p className="hint subtle">
+        For sorting a holding playlist. Each of your tracks is treated as new, and we check how often one of the playlists it’s really in
+        comes out first, or in the top 3 or 5.
+      </p>
+      {!rows ? (
+        <button
+          onClick={() => {
+            setWorking(true);
+            setTimeout(() => {
+              setRows(run());
+              setWorking(false);
+            }, 30); // let “Measuring…” show first
+          }}
+          disabled={working}
+        >
+          {working ? 'Measuring…' : 'Measure'}
+        </button>
+      ) : (
+        <>
+          <table className="studio-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Top 1</th>
+                <th>Top 3</th>
+                <th>Top 5</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.label}>
+                  <td>{r.label}</td>
+                  <td>{pct(r.hit1, r.tracks)}</td>
+                  <td>{pct(r.hit3, r.tracks)}</td>
+                  <td>{pct(r.hit5, r.tracks)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={() => void navigator.clipboard.writeText(text(rows)).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy results'}</button>
+        </>
+      )}
+    </details>
   );
 }
 

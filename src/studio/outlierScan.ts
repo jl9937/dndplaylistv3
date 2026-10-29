@@ -7,6 +7,7 @@ import { getPlaylistTracks } from '../spotify/api';
 import type { Playlist, Track } from '../spotify/types';
 import { MIN_FOR_OUTLIERS, summarise, type PlaylistCoverage, type PlaylistInput } from './coverage';
 import { featuresFor } from './featureCache';
+import type { Features } from './reccobeats';
 
 export type ScanState =
   | { phase: 'idle' }
@@ -20,6 +21,9 @@ export type ScanState =
       /** Playlists with too few tracks with features to judge. */
       tooShort: number;
       failed: string[];
+      /** What was scanned, kept for recommendations (US-5-3). */
+      inputs: PlaylistInput[];
+      features: Map<string, Features>;
     }
   | { phase: 'error'; message: string };
 
@@ -71,6 +75,8 @@ export async function scan(playlists: Playlist[], deps: Deps = {}): Promise<void
         playlists: report.playlists,
         tooShort: report.playlists.filter((p) => p.found < MIN_FOR_OUTLIERS).length,
         failed,
+        inputs,
+        features,
       });
   } catch (e) {
     if (!current()) return;
