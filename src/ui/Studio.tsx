@@ -9,6 +9,7 @@ import { MIN_FOR_OUTLIERS, type Outlier, type PlaylistCoverage } from '../studio
 import { scan, stopScan } from '../studio/outlierScan';
 import { evaluate, type EvalRow } from '../studio/recommend';
 import { useOutlierScan, usePref } from './hooks';
+import { Sorter } from './Sorter';
 
 // The Studio tab (Milestone 5). For now, outlier review (US-5-2): suggestions to listen to,
 // then remove or keep. Nothing is removed without a click, and removing can be undone.
@@ -23,12 +24,15 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export function Studio({
   playlists,
+  mine,
   byId,
   now,
   onPlayAt,
 }: {
   /** The playlists to scan: my own tagged ones. */
   playlists: Playlist[];
+  /** Every playlist I own, for the sorter's holding playlist. */
+  mine: Playlist[];
   byId: Map<string, Playlist>;
   now: NowPlaying;
   /** Play a playlist from a track. Called inside the click. */
@@ -90,10 +94,9 @@ export function Studio({
 
   return (
     <section className="studio">
-      <h2>Outliers</h2>
       <p className="hint subtle">
-        Tracks that sound unlike the rest of their playlist, judged on energy, mood, tempo, loudness and vocals (from ReccoBeats, which
-        knows about two thirds of tracks). Suggestions only: give each a listen, then remove it or keep it.
+        Scan reads your tagged playlists, for sorting a holding playlist into them and for finding outliers. Sound comes from ReccoBeats,
+        which knows about two thirds of tracks.
       </p>
       <div className="studio-actions">
         <button className="primary" onClick={() => void scan(playlists)} disabled={busy || playlists.length === 0}>
@@ -123,8 +126,14 @@ export function Studio({
           <button onClick={() => void startLogin()}>Log in again</button>
         </p>
       )}
+      {done && <Sorter mine={mine} scanned={done.inputs} scannedFeatures={done.features} onPlayAt={onPlayAt} />}
       {done && (
         <>
+          <h2>Outliers</h2>
+          <p className="hint subtle">
+            Tracks that sound unlike the rest of their playlist, judged on energy, mood, tempo, loudness and vocals. Suggestions only: give
+            each a listen, then remove it or keep it.
+          </p>
           <p>
             <strong>{total}</strong> {total === 1 ? 'suggestion' : 'suggestions'} in {withSuggestions.length}{' '}
             {withSuggestions.length === 1 ? 'playlist' : 'playlists'}.

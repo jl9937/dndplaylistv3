@@ -143,6 +143,9 @@ export interface EvalRow {
   hit5: number;
 }
 
+/** Chosen from Jim's measurement (2026-10-29): top 3 49%, top 5 57%, against 13% and 19% for the biggest playlists. */
+export const SORTER_WEIGHTS: Weights = { artist: 1, album: 1, sound: 0.05 };
+
 export const COMBOS: { label: string; weights: Weights }[] = [
   { label: 'Biggest playlists (baseline)', weights: { artist: 0, album: 0, sound: 0, size: 1 } },
   { label: 'Sound only', weights: { artist: 0, album: 0, sound: 1 } },

@@ -272,7 +272,13 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       {route === 'ambience' ? (
         <Ambience engine={ambience} state={amb} />
       ) : route === 'studio' && library.status === 'ok' ? (
-        <Studio playlists={scannable(library.playlists, library.myId)} byId={byId} now={now} onPlayAt={playAt} />
+        <Studio
+          playlists={scannable(library.playlists, library.myId)}
+          mine={library.playlists.filter((p) => p.owner.id === library.myId)}
+          byId={byId}
+          now={now}
+          onPlayAt={playAt}
+        />
       ) : route === 'board' && library.status === 'ok' ? (
         <Board
           board={board}

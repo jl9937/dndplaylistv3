@@ -117,7 +117,8 @@ For anything the names can't express. `tagRules` add a tag to every playlist who
 8. **Ready check** before a session: login, device, a test play (then pause), shuffle and repeat.
 9. **Ambience:** looping background sounds (rain, fire, crowd…) from this computer, on top of the music, each with its own volume. Turn layers on in the **Ambience** tab, then use a tile's **≈** button to save that mix on the tile. Pressing the tile then crossfades to its ambience as the playlist starts. Sounds are the files in [`ambience/`](ambience/README.md), added by committing them.
 10. **Skip & remove** (bottom bar): a track that doesn't fit is skipped and removed from the playing playlist in Spotify, if the playlist is yours. **Undo** puts it back for 20 s. The first time, it asks you to log in again, to allow the app to change playlists.
-11. **Studio → Outliers:** **Scan** your playlists for tracks that sound unlike the rest of their playlist, with the reason. **Play** to listen, then **Remove** (undoable) or **Keep** (it fits; not suggested again).
+11. **Studio → Sort a holding playlist:** after **Scan**, choose your holding playlist (e.g. *For dnd sorting*). Each track gets up to 3 suggested playlists with the reason (shared composer or album), and **Copy** to add it there (undoable), or **Copy to another playlist…**. The holding playlist isn't changed.
+    **Studio → Outliers:** **Scan** your playlists for tracks that sound unlike the rest of their playlist, with the reason. **Play** to listen, then **Remove** (undoable) or **Keep** (it fits; not suggested again).
 12. **Tag a playlist:** a Library card's **#** button adds one of your tags (as `[Tag]` at the end of its name) or removes one, renaming it in Spotify. **Undo** renames it back.
 
 Every press starts at a random track, shuffled, repeating the playlist. A tile shows **Playing** only once Spotify is seen playing it; otherwise **Failed** with the reason and what to do.
