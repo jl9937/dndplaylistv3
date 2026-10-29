@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { daysUntilRelogin, type CallbackResult } from './auth/auth';
-import { boardOrder, isOnBoard, moveScene, moveSection, removeScene, syncNames, toggleOnBoard, type Scene } from './board/board';
+import { ambience } from './ambience/instance';
+import { boardOrder, isOnBoard, moveScene, moveSection, removeScene, setSceneAmbience, syncNames, toggleOnBoard, type Scene } from './board/board';
 import { updateBoard } from './board/boardStore';
 import { RELOGIN_WARN_DAYS } from './config';
 import { loadLibrary } from './library/libraryStore';
@@ -15,11 +16,12 @@ import { bootPlayer, webPlayback } from './player/instance';
 import { createSdkDevice } from './player/sdkDevice';
 import { trackCount, type Playlist } from './spotify/types';
 import { write } from './storage';
-import { Board } from './ui/Board';
+import { Ambience, AmbienceMini } from './ui/Ambience';
+import { Board, type TileAmbience } from './ui/Board';
 import { canFloat } from './ui/compact';
 import { DebugPanel } from './ui/DebugPanel';
 import { DevicePicker } from './ui/DevicePicker';
-import { useAuthStatus, useAutoplayBlocked, useBoard, useLibrary, useNowPlaying, usePref, usePressState } from './ui/hooks';
+import { useAmbience, useAuthStatus, useAutoplayBlocked, useBoard, useLibrary, useNowPlaying, usePref, usePressState } from './ui/hooks';
 import { Library } from './ui/Library';
 import { LoginScreen } from './ui/LoginScreen';
 import { Palette } from './ui/Palette';
@@ -53,6 +55,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   const press = usePressState();
   const now = useNowPlaying();
   const autoplayBlocked = useAutoplayBlocked();
+  const amb = useAmbience();
   const [pref, setPref] = useState<DevicePref | null>(loadDevicePref);
   const [notice, setNotice] = useState<string | null>(null);
   const [showReady, setShowReady] = useState(false);
@@ -107,10 +110,20 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       chooseDevice();
     }
   };
-  /** Board tiles, the strip and number keys play a scene. Milestone 4 starts its ambience here. */
+  /** Board tiles, the strip and number keys play a scene: its playlist, and its ambience (D29). */
   const playScene = (scene: Scene) => {
+    if (scene.ambience) {
+      ambience.unlock(); // first, while still inside the click
+      ambience.applyPreset(scene.ambience);
+    }
     const p = byId.get(scene.playlistId);
     if (p) play(p);
+  };
+  const soundNames = new Map(ambience.sounds.map((s) => [s.id, s.name]));
+  const tileAmbience: TileAmbience = {
+    current: ambience.mix(),
+    names: (preset) => preset.map((l) => soundNames.get(l.soundId) ?? `${l.soundId} (missing)`).join(', '),
+    save: (sceneId, preset) => updateBoard((b) => setSceneAmbience(b, sceneId, preset)),
   };
   const togglePause = () => playback.togglePause(pref, now.state);
   const next = () => void playback.next(pref, now.state).then(() => setTimeout(() => void refreshNowPlaying(), 600));
@@ -178,6 +191,9 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           <a href="#/library" aria-current={route === 'library' ? 'page' : undefined}>
             Library
           </a>
+          <a href="#/ambience" aria-current={route === 'ambience' ? 'page' : undefined}>
+            Ambience
+          </a>
         </nav>
         {days !== null && days <= RELOGIN_WARN_DAYS && <span className="warn">Re-login needed in {days} days</span>}
         <nav className="actions">
@@ -239,7 +255,9 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
         <ReadyCheck playlists={playlists} pref={pref} makeDevice={playback.deviceFor} onClose={() => setShowReady(false)} />
       )}
 
-      {route === 'board' && library.status === 'ok' ? (
+      {route === 'ambience' ? (
+        <Ambience engine={ambience} state={amb} />
+      ) : route === 'board' && library.status === 'ok' ? (
         <Board
           board={board}
           byId={byId}
@@ -249,6 +267,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           onMoveScene={(from, to) => updateBoard((b) => moveScene(b, from, to))}
           onMoveSection={(key, dir) => updateBoard((b) => moveSection(b, key, dir))}
           onOpenLibrary={() => go('library')}
+          ambience={tileAmbience}
         />
       ) : (
         <Library
@@ -274,6 +293,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
         />
       )}
       <div className="player-dock">
+        <AmbienceMini engine={ambience} state={amb} onOpen={() => go('ambience')} />
         <PlayerBar
           docked
           fade={{ on: fadeOn, toggle: () => setFadeOn(!fadeOn) }}

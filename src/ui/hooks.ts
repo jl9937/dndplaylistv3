@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from 'react';
+import { ambience } from '../ambience/instance';
 import { getAuthStatus, subscribeAuth } from '../auth/auth';
 import { getLog, subscribeLog } from '../diagnostics/log';
 import { getLibrary, subscribeLibrary } from '../library/libraryStore';
@@ -30,3 +31,4 @@ export function usePref<T>(key: StorageKey, fallback: T): [T, (value: T) => void
 export const useNowPlaying = () => useSyncExternalStore(subscribeNowPlaying, getNowPlaying);
 export const useSdkStatus = () => useSyncExternalStore(webPlayback.subscribe, webPlayback.getStatus);
 export const useAutoplayBlocked = () => useSyncExternalStore(webPlayback.subscribe, webPlayback.isAutoplayBlocked);
+export const useAmbience = () => useSyncExternalStore(ambience.subscribe, ambience.getState);

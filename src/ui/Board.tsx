@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { describePlaylist } from '../library/tags';
+import type { PresetLayer } from '../ambience/engine';
 import { KEYED_TILES, sections, type BoardDoc, type Scene } from '../board/board';
 import type { Playlist } from '../spotify/types';
 import { Cover } from './Cover';
@@ -14,6 +15,7 @@ export function Board({
   onMoveScene,
   onMoveSection,
   onOpenLibrary,
+  ambience,
 }: {
   board: BoardDoc;
   byId: Map<string, Playlist>;
@@ -23,6 +25,7 @@ export function Board({
   onMoveScene: (sceneId: string, targetSceneId: string) => void;
   onMoveSection: (key: string, dir: -1 | 1) => void;
   onOpenLibrary: () => void;
+  ambience: TileAmbience;
 }) {
   const [dragging, setDragging] = useState<{ sceneId: string; section: string } | null>(null);
   const list = sections(board);
@@ -75,6 +78,7 @@ export function Board({
                   status={statusOf(scene.playlistId)}
                   dropTarget={!!dragging && dragging.section === section.key && dragging.sceneId !== scene.id}
                   onPlay={onPlay}
+                  ambience={ambience}
                   onRemove={() => onRemove(scene.id)}
                   onDragStart={() => setDragging({ sceneId: scene.id, section: section.key })}
                   onDragEnd={() => setDragging(null)}
@@ -99,6 +103,7 @@ function Tile({
   status,
   dropTarget,
   onPlay,
+  ambience,
   onRemove,
   onDragStart,
   onDragEnd,
@@ -110,12 +115,15 @@ function Tile({
   status: ItemStatus;
   dropTarget: boolean;
   onPlay: (scene: Scene) => void;
+  ambience: TileAmbience;
   onRemove: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDrop: () => void;
 }) {
   const { shortName } = describePlaylist(playlist?.name ?? scene.name);
+  const [editing, setEditing] = useState(false);
+  const preset = scene.ambience ?? [];
   return (
     <li
       className={`tile ${status.status}${dropTarget ? ' drop-target' : ''}${playlist ? '' : ' unavailable'}`}
@@ -137,6 +145,7 @@ function Tile({
       <button className="tile-play" onClick={() => onPlay(scene)} disabled={!playlist}>
         <Cover images={playlist?.images} className="tile-cover" />
         <span className="tile-name">{shortName}</span>
+        {preset.length > 0 && <span className="tile-ambience">≈ {ambience.names(preset)}</span>}
         {number !== null && <kbd className="tile-key">{number}</kbd>}
         <StatusBadge s={status} />
       </button>
@@ -146,9 +155,50 @@ function Tile({
           {status.reason} <button onClick={() => onPlay(scene)}>Try again</button>
         </span>
       )}
+      {editing && (
+        <span className="tile-ambience-menu">
+          <button
+            onClick={() => {
+              ambience.save(scene.id, ambience.current);
+              setEditing(false);
+            }}
+            disabled={ambience.current.length === 0}
+            title={ambience.current.length === 0 ? 'Turn on some layers in the Ambience tab first' : undefined}
+          >
+            {ambience.current.length === 0 ? 'Nothing playing to save' : `Save current: ${ambience.names(ambience.current)}`}
+          </button>
+          {preset.length > 0 && (
+            <button
+              onClick={() => {
+                ambience.save(scene.id, []);
+                setEditing(false);
+              }}
+            >
+              Remove ambience
+            </button>
+          )}
+        </span>
+      )}
+      <button
+        className={`icon tile-ambience-edit${preset.length > 0 ? ' on' : ''}`}
+        onClick={() => setEditing((v) => !v)}
+        aria-expanded={editing}
+        aria-label={`Ambience for ${shortName}`}
+        title="Ambience for this tile"
+      >
+        ≈
+      </button>
       <button className="icon tile-remove" onClick={onRemove} aria-label={`Remove ${shortName} from the Board`} title="Remove from the Board">
         ×
       </button>
     </li>
   );
+}
+
+/** What a tile needs to show and save its ambience preset (D30). */
+export interface TileAmbience {
+  /** The layers playing now: what Save would store. */
+  current: PresetLayer[];
+  names: (preset: PresetLayer[]) => string;
+  save: (sceneId: string, preset: PresetLayer[]) => void;
 }

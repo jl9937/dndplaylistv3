@@ -7,6 +7,7 @@ import {
   moveSection,
   removeScene,
   sections,
+  setSceneAmbience,
   syncNames,
   toggleOnBoard,
   type BoardDoc,
@@ -64,6 +65,15 @@ describe('the Board', () => {
     expect(order(removeScene(b, b.scenes[0].id))).toEqual(['Town: B']);
   });
 
+  it('saves an ambience preset on one scene, and an empty preset clears it', () => {
+    const b = withPlaylists('Town: A', 'Town: B');
+    const id = b.scenes[0].id;
+    const withRain = setSceneAmbience(b, id, [{ soundId: 'Rain.ogg', volume: 0.7 }]);
+    expect(withRain.scenes[0].ambience).toEqual([{ soundId: 'Rain.ogg', volume: 0.7 }]);
+    expect(withRain.scenes[1].ambience).toBeUndefined();
+    expect('ambience' in setSceneAmbience(withRain, id, []).scenes[0]).toBe(false);
+  });
+
   it('syncNames picks up renames and retags, and keeps the doc identity when nothing changed', () => {
     const b = withPlaylists('Town: A', 'Combat: X');
     expect(syncNames(b, new Map([['p0', 'Town: A']]))).toBe(b);
@@ -72,9 +82,16 @@ describe('the Board', () => {
 });
 
 describe('stored Board validation', () => {
-  it('round-trips, keeping extra scene fields a later feature adds (Milestone 4 ambience)', () => {
-    const b: BoardDoc = { version: 2, scenes: [{ id: 'c1', playlistId: 'abc', name: 'Town: A', ambience: ['rain'] } as never] };
+  it('round-trips, keeping extra scene fields a later feature adds', () => {
+    const b: BoardDoc = { version: 2, scenes: [{ id: 'c1', playlistId: 'abc', name: 'Town: A', lighting: 'dim' } as never] };
     expect(parseBoard(JSON.parse(JSON.stringify(b)))).toEqual({ ok: true, board: b });
+  });
+
+  it('keeps well-formed ambience layers and drops the rest, without rejecting the scene', () => {
+    const scene = (ambience: unknown) => ({ version: 2, scenes: [{ id: 'c1', playlistId: 'abc', name: 'A', ambience }] });
+    const ok = parseBoard(scene([{ soundId: 'Rain.ogg', volume: 0.5, x: 1 }, { soundId: '', volume: 1 }, { soundId: 'Fire.ogg', volume: 3 }]));
+    expect(ok).toEqual({ ok: true, board: { version: 2, scenes: [{ id: 'c1', playlistId: 'abc', name: 'A', ambience: [{ soundId: 'Rain.ogg', volume: 0.5 }] }] } });
+    expect(parseBoard(scene('rain'))).toEqual({ ok: true, board: { version: 2, scenes: [{ id: 'c1', playlistId: 'abc', name: 'A' }] } });
   });
 
   it('rejects malformed documents and scenes', () => {

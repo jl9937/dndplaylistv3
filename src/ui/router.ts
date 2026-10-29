@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 
 // Hash routing (spec §7): no server-side fallback needed, and ?debug in the query survives.
-export type Route = 'board' | 'library';
+export type Route = 'board' | 'library' | 'ambience';
+const ROUTES: Route[] = ['board', 'library', 'ambience'];
 
 function parse(): Route | null {
   const h = location.hash.replace(/^#\/?/, '');
-  return h === 'board' || h === 'library' ? h : null;
+  return ROUTES.find((r) => r === h) ?? null;
 }
 
 export function useRoute(fallback: Route): [Route, (r: Route) => void] {

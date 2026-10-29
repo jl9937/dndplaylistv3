@@ -198,6 +198,9 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 | D25 | Extra tags in names | **`[Tag]` anywhere in a name** adds an extra tag and is hidden from the displayed name, so `Battle: Blades in the Dark [Theme]` is under Battle and Theme. `Tag:` at the start stays the main group. `config/tags.json` remains for rules names can't express (hide rules, transitional matches). | Jim prefers one naming convention he controls in Spotify over per-tag config rules. Renaming is done by Jim in Spotify; the app stays read-only (no `playlist-modify` scope). |
 | D26 | Soft transitions | **Fade out (3 s), then the new playlist starts at full volume** (no fade in, after first use). On by default, with a **Fade** toggle. The volume is restored once the new playlist is observed on the device, never before, because Spotify's commands are unordered. Remote devices fade in 5 coarse steps; the in-browser player in 12 local steps. The pre-fade volume is remembered across superseding presses and restored on every failure, pause, resume, next or logout. | Jim's top Milestone 3 request; he then preferred the new music to come straight in. Restoring on every exit path means a failed switch can never leave the music stuck quiet. Detailed in [milestone-3.md](milestone-3.md). |
 | D27 | Library and player layout | **Tag pills** above the Library filter it to the selected tags. **Now playing is docked** at the bottom of the main window, larger, with the playlist cover. | Jim found the long Library hard to scan, and wanted the player bar more visually distinct. |
+| D28 | Ambience sound source | **Starter pack in the repo only**: audio files in `ambience/`, found at build time, named after the file. No upload, no IndexedDB. Jim adds the files (licences that allow a public repo), credited in `ambience/CREDITS.md` | Simplest; nothing stored in the browser. Changing sounds needs a commit. See [milestone-4.md](milestone-4.md) |
+| D29 | Pressing a tile with ambience | **Crossfade to the tile's preset over 3 s.** A tile without a preset leaves the ambience as it is | Lets a few tiles set the mood and the rest only change music |
+| D30 | Where the mixer lives | **An Ambience tab** (`#/ambience`), a compact control in the player dock, and an **≈** button on each tile to save the current mix | Keeps the Board's tiles large |
 | D12 | Compact mode | **A then B.** (A) A button switches to a docked narrow strip: compact layout, and the window resizes and moves itself to the screen edge. (B) An always-on-top floating strip using Document Picture-in-Picture (Chrome/Edge), tested early in Milestone 2. | A is the reliable baseline. B is the target experience if the spike passes. See [§13.5](#135-compact-mode). |
 
 ### Open questions
@@ -341,10 +344,10 @@ These are not committed designs. They record enough thinking that the early mile
 - **Same tab as the SDK player:** the Spotify music (Web Playback SDK) and the ambience mix are separate audio outputs in the same page. Their volumes are independent.
 - **Autoplay:** the `AudioContext` is resumed inside a click handler, the same rule as the play pipeline in §12.
 - **Where the sound files come from** (decided by a spike, see [research.md §7.1](research.md#71-ambience-sound-sources)). There are two candidate approaches, which can be combined:
-  1. **Bring your own folder:** pick a folder of sound files on the laptop. The app stores them in IndexedDB. This avoids every redistribution and licensing question, because nothing is published.
-  2. **Bundled starter pack:** a small set of CC0 loops committed to the repo and served with the app. Only CC0 files, or CC-BY files with an attributions page.
+  1. **Bring your own folder:** pick a folder of sound files on the laptop. The app stores them in IndexedDB. This avoids every redistribution and licensing question, because nothing is published. *(Not chosen, D28.)*
+  2. **Bundled starter pack:** a small set of CC0 loops committed to the repo and served with the app. Only CC0 files, or CC-BY files with an attributions page. **Chosen (D28).**
 - **Format:** Ogg Opus or AAC, about 1–3 minutes per loop, trimmed at zero crossings so the seam is inaudible.
-- **CSP:** add `media-src 'self' blob:` when this milestone lands.
+- **CSP:** no change needed. Sounds are fetched from `'self'` and decoded by Web Audio, so `media-src` isn't involved.
 - **Scenes:** a scene can store `{ layerId, volume }[]`. Pressing the scene starts the playlist through the play pipeline and cross-fades the ambience to the preset.
 
 ### 13.4 Playlist Studio

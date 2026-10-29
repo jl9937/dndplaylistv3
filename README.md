@@ -115,6 +115,7 @@ For anything the names can't express. `tagRules` add a tag to every playlist who
 6. **Bottom bar:** what's playing, **Pause/Resume** and **Next**. With **✓ Fade** on, a switch fades the old music out over 3 s, then the new playlist starts at full volume.
 7. **Compact** turns the window into a narrow strip (the installed app docks itself to the screen edge). **Float** opens the strip always-on-top, over Notion (Chrome or Edge).
 8. **Ready check** before a session: login, device, a test play (then pause), shuffle and repeat.
+9. **Ambience:** looping background sounds (rain, fire, crowd…) from this computer, on top of the music, each with its own volume. Turn layers on in the **Ambience** tab, then use a tile's **≈** button to save that mix on the tile. Pressing the tile then crossfades to its ambience as the playlist starts. Sounds are the files in [`ambience/`](ambience/README.md), added by committing them.
 
 Every press starts at a random track, shuffled, repeating the playlist. A tile shows **Playing** only once Spotify is seen playing it; otherwise **Failed** with the reason and what to do.
 

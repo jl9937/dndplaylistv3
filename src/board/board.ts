@@ -4,10 +4,11 @@
 // Invariant: `scenes` is always contiguous by section (first tag), in Board order. So the
 // Board, the number keys and storage can never disagree about order.
 
+import type { PresetLayer } from '../ambience/engine';
 import { labelFor, primaryTagKey, tagLabels } from '../library/tags';
 
 /**
- * A Board tile. A scene, not a bare playlist ID, so Milestone 4 can attach ambience to it.
+ * A Board tile: a playlist, plus an optional ambience preset (Milestone 4).
  * Unknown fields survive load and save (see validate.ts), so new features can add their own.
  */
 export interface Scene {
@@ -15,6 +16,8 @@ export interface Scene {
   playlistId: string;
   /** Spotify name, cached so the tile reads sensibly if the playlist leaves the library. */
   name: string;
+  /** Pressing the tile crossfades the ambience to these layers (D29). */
+  ambience?: PresetLayer[];
 }
 
 export interface BoardDoc {
@@ -76,6 +79,18 @@ export function toggleOnBoard(board: BoardDoc, playlist: { id: string; name: str
 
 export function removeScene(board: BoardDoc, sceneId: string): BoardDoc {
   return withScenes(board, board.scenes.filter((s) => s.id !== sceneId));
+}
+
+/** Save an ambience preset on a scene; an empty preset removes it. */
+export function setSceneAmbience(board: BoardDoc, sceneId: string, preset: PresetLayer[]): BoardDoc {
+  return {
+    ...board,
+    scenes: board.scenes.map((s) => {
+      if (s.id !== sceneId) return s;
+      const { ambience: _old, ...rest } = s;
+      return preset.length > 0 ? { ...rest, ambience: preset } : rest;
+    }),
+  };
 }
 
 /** Move a scene to `targetSceneId`'s position. Only within the same section. */
