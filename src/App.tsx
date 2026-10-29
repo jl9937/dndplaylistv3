@@ -18,6 +18,7 @@ import { trackCount, type Playlist } from './spotify/types';
 import { write } from './storage';
 import { Ambience, AmbienceMini } from './ui/Ambience';
 import { Board, type TileAmbience } from './ui/Board';
+import { Menu } from './ui/Menu';
 import { useSkipRemove } from './ui/SkipRemove';
 import { scannable } from './studio/outlierScan';
 import { Studio } from './ui/Studio';
@@ -211,30 +212,54 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           </a>
         </nav>
         {days !== null && days <= RELOGIN_WARN_DAYS && <span className="warn">Re-login needed in {days} days</span>}
-        <nav className="actions">
-          <button onClick={() => setShowPalette(true)} disabled={library.status !== 'ok'} title="Cmd+K or /">
-            All playlists <kbd>⌘K</kbd>
+        <div className="actions">
+          <button className="search-button" onClick={() => setShowPalette(true)} disabled={library.status !== 'ok'} title="Cmd+K or /">
+            <span aria-hidden>⌕</span> Find a playlist <kbd>⌘K</kbd>
           </button>
           <button onClick={() => setShowReady((v) => !v)} disabled={library.status !== 'ok'}>
             Ready check
           </button>
-          <button
-            onClick={() => {
-              setShowPalette(false);
-              strip.enterCompact();
-            }}
-            title="Narrow strip for beside Notion"
-          >
-            Compact
-          </button>
-          {floatButton}
-          <button className="link" onClick={onShowLog}>
-            Log
-          </button>
-          <button className="link" onClick={logoutEverything}>
-            Log out
-          </button>
-        </nav>
+          <Menu label="More">
+            {(close) => (
+              <>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    close();
+                    setShowPalette(false);
+                    strip.enterCompact();
+                  }}
+                >
+                  Compact <span className="menu-hint">narrow strip beside Notion</span>
+                </button>
+                {canFloat() && !strip.pip && (
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      close();
+                      strip.float();
+                    }}
+                  >
+                    Float <span className="menu-hint">always on top</span>
+                  </button>
+                )}
+                <hr />
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    close();
+                    onShowLog();
+                  }}
+                >
+                  Log
+                </button>
+                <button role="menuitem" onClick={logoutEverything}>
+                  Log out
+                </button>
+              </>
+            )}
+          </Menu>
+        </div>
       </header>
 
       {strip.pip && (
