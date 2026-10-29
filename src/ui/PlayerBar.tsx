@@ -1,7 +1,7 @@
 import { describePlaylist } from '../library/tags';
 import type { NowPlaying } from '../playback/nowPlaying';
 import type { PressState } from '../playback/pipeline';
-import type { Playlist } from '../spotify/types';
+import { pickCover, type Playlist } from '../spotify/types';
 import { parsePlaylistId } from '../spotify/uri';
 import { Cover } from './Cover';
 
@@ -22,7 +22,7 @@ export function PlayerBar({
   canControl: boolean;
   onToggle: () => void;
   onNext: () => void;
-  /** The main window's bottom bar: larger, with the playlist's cover. */
+  /** The main window's bottom bar: larger, with the track's album art. */
   docked?: boolean;
   /** The soft-transition toggle, shown in the docked bar. */
   fade?: { on: boolean; toggle: () => void };
@@ -65,13 +65,11 @@ export function PlayerBar({
   }
 
   const isPlaying = !!now.state?.is_playing;
-  const observedId = parsePlaylistId(now.state?.context?.uri);
-  const coverOf =
-    (observedId && byId.get(observedId)) ||
-    (press.status !== 'idle' && press.playlistId ? byId.get(press.playlistId) : undefined);
+  // The playing track's album art, or none: not the playlist's cover (Jim, 2026-10-29).
+  const art = now.state?.item?.album?.images;
   return (
     <section className={`player-bar ${tone}${docked ? ' docked' : ''}`} aria-live="polite">
-      {docked && <Cover images={coverOf?.images} className="now-cover" />}
+      {docked && pickCover(art) && <Cover images={art} className="now-cover" />}
       <span className="now">
         <span className="now-line">{line}</span>
         {sub && <span className="now-sub">{sub}</span>}

@@ -34,7 +34,7 @@ Keep the playlists in shape: drop a track that doesn't fit while it plays, find 
 - [ ] A line at the top says what it was renamed from and to, with **Undo** (renames it back) for 20 s. A failure says why, with **Try again**. Without write access it changes nothing and asks Jim to log in again.
 
 ### Later (Jim, 2026-10-29)
-- [ ] The player bar's art should be the **playing track's** album art, or none at all, not the playlist's cover.
+- [x] The player bar's art is the **playing track's** album art, or none at all, not the playlist's cover.
 
 ## Technical design
 ```
