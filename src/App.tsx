@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { daysUntilRelogin, type CallbackResult } from './auth/auth';
+import { getLockout, isOwner, lockOut } from './auth/owner';
 import { ambience } from './ambience/instance';
 import { boardOrder, isOnBoard, moveScene, moveSection, removeScene, setSceneAmbience, syncNames, toggleOnBoard, type Scene } from './board/board';
 import { updateBoard } from './board/boardStore';
@@ -46,7 +47,10 @@ export function App({ callback }: { callback: CallbackResult }) {
       {status === 'logged-in' ? (
         <Main onShowLog={() => setShowDebug(true)} />
       ) : (
-        <LoginScreen relogin={status === 'relogin-needed'} message={callback.kind === 'error' ? callback.message : undefined} />
+        <LoginScreen
+          relogin={status === 'relogin-needed'}
+          message={getLockout() ?? (callback.kind === 'error' ? callback.message : undefined)}
+        />
       )}
       {showDebug && <DebugPanel onClose={() => setShowDebug(false)} />}
     </>
@@ -88,6 +92,11 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     void bootPlayer();
     return startNowPlaying();
   }, []);
+
+  // A session from before the owner lock, or any other way in: the owner only (D35).
+  useEffect(() => {
+    if (library.status === 'ok' && !isOwner(library.myId)) lockOut(logoutEverything, library.myId);
+  }, [library]);
 
   // Keep cached scene names in step with Spotify (renames, retags).
   useEffect(() => {

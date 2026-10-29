@@ -17,8 +17,8 @@ import { Sorter } from './Sorter';
 
 type Row =
   | { phase: 'removing' | 'restoring' }
-  | { phase: 'removed'; position: number }
-  | { phase: 'failed'; error: string; position?: number };
+  | { phase: 'removed'; positions: number[] }
+  | { phase: 'failed'; error: string; positions?: number[] };
 
 const keyOf = (playlistId: string, trackId: string) => `${playlistId}:${trackId}`;
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -71,24 +71,24 @@ export function Studio({
     const target: RemoveTarget = { playlistId: p.id, playlistName: p.name, trackId: o.track.id, trackName: o.track.name };
     setRow(key, { phase: 'removing' });
     removeTrack(target).then(
-      (position) => {
-        setRow(key, { phase: 'removed', position });
+      (positions) => {
+        setRow(key, { phase: 'removed', positions });
         void loadLibrary();
       },
       (e: unknown) => setRow(key, { phase: 'failed', error: message(e) }),
     );
   }
 
-  function undo(p: PlaylistCoverage, o: Outlier, position: number) {
+  function undo(p: PlaylistCoverage, o: Outlier, positions: number[]) {
     const key = keyOf(p.id, o.track.id);
     const target: RemoveTarget = { playlistId: p.id, playlistName: p.name, trackId: o.track.id, trackName: o.track.name };
     setRow(key, { phase: 'restoring' });
-    restoreTrack(target, position).then(
+    restoreTrack(target, positions).then(
       () => {
         setRow(key, null);
         void loadLibrary();
       },
-      (e: unknown) => setRow(key, { phase: 'failed', error: `Couldn’t put it back: ${message(e)}`, position }),
+      (e: unknown) => setRow(key, { phase: 'failed', error: `Couldn’t put it back: ${message(e)}`, positions }),
     );
   }
 
@@ -222,15 +222,15 @@ export function Studio({
                           {row?.phase === 'removed' ? (
                             <>
                               <span className="subtle">Removed</span>
-                              <button onClick={() => undo(p, o, row.position)}>Undo</button>
+                              <button onClick={() => undo(p, o, row.positions)}>Undo</button>
                             </>
                           ) : row?.phase === 'removing' || row?.phase === 'restoring' ? (
                             <span className="subtle">{row.phase === 'removing' ? 'Removing…' : 'Putting back…'}</span>
                           ) : (
                             <>
                               {row?.phase === 'failed' && <span className="error">{row.error}</span>}
-                              {row?.phase === 'failed' && row.position !== undefined ? (
-                                <button onClick={() => undo(p, o, row.position!)}>Try again</button>
+                              {row?.phase === 'failed' && row.positions !== undefined ? (
+                                <button onClick={() => undo(p, o, row.positions!)}>Try again</button>
                               ) : (
                                 <>
                                   <button onClick={() => playlist && onPlayAt(playlist, o.track.position)} disabled={!playlist}>

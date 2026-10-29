@@ -71,7 +71,7 @@ export async function fetchFeatures(ids: string[], deps: Deps = {}): Promise<Map
   const found = new Map<string, Features>();
   for (let i = 0; i < unique.length; i += BATCH) {
     const batch = unique.slice(i, i + BATCH);
-    const url = `${RECCOBEATS}?ids=${batch.join(',')}`;
+    const url = `${RECCOBEATS}?ids=${batch.map(encodeURIComponent).join(',')}`;
     for (let attempt = 0; ; attempt++) {
       deps.signal?.throwIfAborted();
       const res = await doFetch(url, { signal: deps.signal });

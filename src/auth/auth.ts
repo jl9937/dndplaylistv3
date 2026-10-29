@@ -83,8 +83,18 @@ export function readTokens(): Tokens | null {
 }
 
 function storeTokens(tokens: Tokens): void {
-  write(TOKENS_KEY, tokens);
+  try {
+    write(TOKENS_KEY, tokens);
+  } catch {
+    // Storage full (caches can grow): tokens matter more. Drop the caches and try again.
+    clearNamespace('cache');
+    log('auth', 'storage full: cleared caches to keep the login');
+    write(TOKENS_KEY, tokens);
+  }
 }
+
+/** Bumped by logout, so a refresh that lands afterwards can't log you back in. */
+let generation = 0;
 
 // ---------- login ----------
 
@@ -106,6 +116,14 @@ export async function startLogin(): Promise<void> {
   location.assign(`${ACCOUNTS_BASE}/authorize?${params}`);
 }
 
+/** Spotify's OAuth error codes, as fixed messages: the raw value is never shown. */
+const LOGIN_ERRORS: Record<string, string> = {
+  access_denied: 'Login was cancelled.',
+  invalid_scope: 'Spotify refused the permissions this app asks for.',
+  server_error: 'Spotify had a problem logging you in. Please try again.',
+  temporarily_unavailable: 'Spotify login is busy. Please try again shortly.',
+};
+
 /**
  * Handle `?code=…&state=…` (or `?error=…`) exactly once, at module load before React
  * renders. The pending verifier is removed before the exchange, so a second call
@@ -117,19 +135,18 @@ export async function handleCallback(url: URL = new URL(location.href)): Promise
   const error = url.searchParams.get('error');
   if (!code && !error) return { kind: 'none' };
 
-  // Clean the URL at once, keeping anything else (such as ?debug).
-  for (const p of ['code', 'state', 'error']) url.searchParams.delete(p);
-  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  // Clean the URL at once, keeping only ?debug: nothing else from the redirect (such as
+  // Spotify's own tracking params) stays in the address bar.
+  const debug = url.searchParams.has('debug');
+  history.replaceState(null, '', url.pathname + (debug ? '?debug' : '') + url.hash);
 
   const pending = read<PendingLogin>(PENDING_KEY);
+  if (error && !pending) return { kind: 'none' }; // not our login: a crafted ?error= link
   remove(PENDING_KEY);
 
   if (error) {
     log('auth', `login returned error: ${error}`);
-    return {
-      kind: 'error',
-      message: error === 'access_denied' ? 'Login was cancelled.' : `Spotify login failed (${error}).`,
-    };
+    return { kind: 'error', message: LOGIN_ERRORS[error] ?? 'Spotify login failed. Please try again.' };
   }
   if (!pending || pending.state !== state) {
     log('auth', 'login state mismatch; no token exchange');
@@ -244,6 +261,7 @@ async function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function doRefresh(staleToken: string): Promise<string> {
+  const gen = generation;
   // Inside the lock, re-read: another window may already have refreshed.
   const tokens = readTokens();
   if (!tokens) throw new ReloginError('Not logged in');
@@ -269,6 +287,8 @@ async function doRefresh(staleToken: string): Promise<string> {
       loginAt: tokens.loginAt,
       scope: json.scope ?? tokens.scope,
     };
+    // Logged out while this was in flight: don't bring the session back.
+    if (gen !== generation || !readTokens()) throw new Error('Logged out');
     storeTokens(next);
     if (json.refresh_token && json.refresh_token !== tokens.refreshToken) {
       log('auth', 'refresh token rotated and stored');
@@ -293,6 +313,7 @@ export function hasScope(scope: string): boolean {
 // ---------- logout, countdown, debug ----------
 
 export function logout(): void {
+  generation++;
   clearNamespace('auth');
   clearNamespace('cache');
   reloginNeeded = false;

@@ -41,16 +41,24 @@ interface Deps {
   add?: (playlistId: string, uris: string[], position?: number) => Promise<void>;
 }
 
-/** Remove the track; returns where it was, for Undo. */
-export async function removeTrack(t: RemoveTarget, deps: Deps = {}): Promise<number> {
+/**
+ * Remove the track. Spotify removes every copy of it, so this returns every position it was
+ * at, for Undo.
+ */
+export async function removeTrack(t: RemoveTarget, deps: Deps = {}): Promise<number[]> {
   const tracks = await (deps.getTracks ?? getPlaylistTracks)(t.playlistId);
-  const at = tracks.find((x) => x.id === t.trackId);
-  if (!at) throw new Error('That track is no longer in the playlist.');
+  const positions = tracks.filter((x) => x.id === t.trackId).map((x) => x.position);
+  if (positions.length === 0) throw new Error('That track is no longer in the playlist.');
   await (deps.remove ?? removeFromPlaylist)(t.playlistId, [uri(t.trackId)]);
-  return at.position;
+  return positions;
 }
 
-/** Undo: put it back at its old position. */
-export async function restoreTrack(t: RemoveTarget, position: number, deps: Deps = {}): Promise<void> {
-  await (deps.add ?? addToPlaylist)(t.playlistId, [uri(t.trackId)], position);
+/** Undo: put every copy back at its old position (lowest first, so each lands where it was). */
+export async function restoreTrack(t: RemoveTarget, positions: number[], deps: Deps = {}): Promise<void> {
+  for (const at of [...positions].sort((a, b) => a - b)) await (deps.add ?? addToPlaylist)(t.playlistId, [uri(t.trackId)], at);
+}
+
+/** Is Spotify still playing this track from this playlist? Checked just before removing. */
+export function stillPlaying(t: RemoveTarget, state: PlaybackState | null | undefined): boolean {
+  return state?.item?.id === t.trackId && parsePlaylistId(state?.context?.uri) === t.playlistId;
 }

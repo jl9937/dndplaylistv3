@@ -3,6 +3,9 @@ import type { Device, Me, Paging, PlaybackState, Playlist, PlaylistEntry, Track 
 
 type Opts = Pick<RequestOptions, 'signal' | 'retry5xx'>;
 
+/** Pages followed at most: a `next` link that loops can't run forever (10,000 items at 50 a page). */
+const MAX_PAGES = 200;
+
 const q = (deviceId: string) => `device_id=${encodeURIComponent(deviceId)}`;
 
 export async function getMe(): Promise<Me> {
@@ -13,7 +16,7 @@ export async function getMe(): Promise<Me> {
 export async function getMyPlaylists(): Promise<Playlist[]> {
   const all: Playlist[] = [];
   let next: string | null = '/me/playlists?limit=50';
-  while (next) {
+  for (let page = 0; next && page < MAX_PAGES; page++) {
     const page: Paging<Playlist | null> = (await request<Paging<Playlist | null>>('GET', next)).data!;
     // Spotify occasionally returns null entries for removed playlists.
     all.push(...page.items.filter((p): p is Playlist => p !== null));
@@ -30,7 +33,7 @@ export async function getPlaylistTracks(playlistId: string, opts: Opts = {}): Pr
   const all: Track[] = [];
   let next: string | null = `/playlists/${encodeURIComponent(playlistId)}/items?limit=50`;
   let position = 0;
-  while (next) {
+  for (let page = 0; next && page < MAX_PAGES; page++) {
     const page: Paging<PlaylistEntry | null> = (await request<Paging<PlaylistEntry | null>>('GET', next, opts)).data!;
     for (const e of page.items) {
       const t = e?.item ?? e?.track;
@@ -54,6 +57,11 @@ export async function getPlaylistTracks(playlistId: string, opts: Opts = {}): Pr
 export async function removeFromPlaylist(playlistId: string, trackUris: string[], opts: Opts = {}): Promise<void> {
   const items = trackUris.map((uri) => ({ uri }));
   await request('DELETE', `/playlists/${encodeURIComponent(playlistId)}/items`, { ...opts, body: { items } });
+}
+
+/** A playlist's current name, straight from Spotify (the cached library may be out of date). */
+export async function getPlaylistName(playlistId: string, opts: Opts = {}): Promise<string> {
+  return (await request<{ name: string }>('GET', `/playlists/${encodeURIComponent(playlistId)}?fields=name`, opts)).data!.name;
 }
 
 /** Rename a playlist I own (D31 #4: adding or removing a `[Tag]`). */

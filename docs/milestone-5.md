@@ -30,7 +30,7 @@ Keep the playlists in shape: drop a track that doesn't fit while it plays, find 
 - [x] Measured on Jim's library (research.md §7.2): composer + album with sound breaking ties puts a real playlist in the top 3 for 49% of tracks (top 5: 57%), against 13% (19%) for the biggest playlists. Those are the sorter's weights.
 - [ ] In Studio, after a scan: **Holding playlist** lists every playlist Jim owns, tagged or not (e.g. *For dnd sorting*), and remembers the choice.
 - [ ] For each of its tracks: the top 3 scanned playlists it isn't already in, best first, with the reason ("3 tracks by Jesper Kyd, 2 from the same album") and **Copy** (adds it at the end, with **Undo**). "Already in …" shows where it's filed. **Copy to another playlist…** lists the rest. **Play** starts the holding playlist from that track.
-- [ ] The holding playlist itself is never changed.
+- [ ] Choosing a playlist copies the track there (never as a duplicate: if it's already there, it says so) and, the first time, takes it out of the holding playlist (Jim, 2026-10-29). The row stays, so the track can go to a second playlist. **Undo** removes the copy only if it's there exactly once, and once no copy is left, puts the track back in the holding playlist at its old position.
 
 ### US-5-4: Tag a playlist (D31 #4)
 - [ ] Each Library card for a playlist Jim owns has a **#** button. It opens a picker: **+ Tag** for every existing tag the playlist doesn't have, **× Tag** for each `[Tag]` already in its name.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canWritePlaylists, removeTarget, removeTrack, restoreTrack } from '../src/playback/skipRemove';
+import { canWritePlaylists, removeTarget, removeTrack, restoreTrack, stillPlaying } from '../src/playback/skipRemove';
 import { addToPlaylist, removeFromPlaylist, renamePlaylist } from '../src/spotify/api';
 import type { PlaybackState, Playlist } from '../src/spotify/types';
 import { write } from '../src/storage';
@@ -42,9 +42,29 @@ describe('skip and remove', () => {
       ],
       remove: async (id, uris) => void calls.push(`remove ${id} ${uris}`),
     });
-    expect(position).toBe(2);
+    expect(position).toEqual([2]);
     await restoreTrack(target, position, { add: async (id, uris, at) => void calls.push(`add ${id} ${uris} @${at}`) });
     expect(calls).toEqual(['remove mine spotify:track:T1', 'add mine spotify:track:T1 @2']);
+  });
+
+  it('a track in the playlist twice: both copies come back where they were', async () => {
+    const adds: number[] = [];
+    const positions = await removeTrack(target, {
+      getTracks: async () => [
+        { id: 'T1', name: '', artists: '', position: 5 },
+        { id: 'T0', name: '', artists: '', position: 1 },
+        { id: 'T1', name: '', artists: '', position: 0 },
+      ],
+      remove: async () => {},
+    });
+    await restoreTrack(target, positions, { add: async (_id, _uris, at) => void adds.push(at!) });
+    expect(adds).toEqual([0, 5]);
+  });
+
+  it('checks the track is still the one playing before removing it', () => {
+    expect(stillPlaying(target, playing('spotify:playlist:mine'))).toBe(true);
+    expect(stillPlaying(target, playing('spotify:playlist:mine', 'T2'))).toBe(false);
+    expect(stillPlaying(target, playing('spotify:playlist:theirs'))).toBe(false);
   });
 
   it('removes nothing if the track has already gone', async () => {

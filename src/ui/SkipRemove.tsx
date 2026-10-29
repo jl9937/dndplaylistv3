@@ -4,13 +4,14 @@ import { log } from '../diagnostics/log';
 import { loadLibrary } from '../library/libraryStore';
 import { describePlaylist } from '../library/tags';
 import type { NowPlaying } from '../playback/nowPlaying';
-import { canWritePlaylists, removeTarget, removeTrack, restoreTrack, type RemoveTarget } from '../playback/skipRemove';
+import { canWritePlaylists, removeTarget, removeTrack, restoreTrack, stillPlaying, type RemoveTarget } from '../playback/skipRemove';
+import { getPlaybackState } from '../spotify/api';
 import type { Playlist } from '../spotify/types';
 
 type Removal =
   | { phase: 'needs-login' }
   | { phase: 'removing' | 'failed-remove'; target: RemoveTarget; error?: string }
-  | { phase: 'removed' | 'restoring' | 'restored' | 'failed-restore'; target: RemoveTarget; position: number; error?: string };
+  | { phase: 'removed' | 'restoring' | 'restored' | 'failed-restore' | 'changed'; target: RemoveTarget; positions: number[]; error?: string };
 
 /** How long the Undo line stays after a removal or an undo. */
 const SHOW_MS = 20_000;
@@ -30,17 +31,28 @@ export function useSkipRemove({ now, byId, myId, next }: { now: NowPlaying; byId
     return () => clearTimeout(t);
   }, [removal]);
 
-  function skipAndRemove() {
+  async function skipAndRemove() {
     if ('reason' in target) return;
     if (!canWritePlaylists()) return setRemoval({ phase: 'needs-login' });
     const mine = ++seq.current;
     const update = (r: Removal) => mine === seq.current && setRemoval(r);
-    next();
     update({ phase: 'removing', target });
+    // "Now playing" can be up to 5 s old: check it's still this track, or the wrong one goes.
+    let fresh: Awaited<ReturnType<typeof getPlaybackState>>;
+    try {
+      fresh = await getPlaybackState({ signal: AbortSignal.timeout(4000) });
+    } catch (e: unknown) {
+      return update({ phase: 'failed-remove', target, error: message(e) });
+    }
+    if (!stillPlaying(target, fresh)) {
+      log('app', 'skip and remove: the track changed first; nothing removed');
+      return update({ phase: 'changed', target, positions: [] });
+    }
+    next();
     removeTrack(target).then(
-      (position) => {
+      (positions) => {
         log('app', 'skip and remove: removed');
-        update({ phase: 'removed', target, position });
+        update({ phase: 'removed', target, positions });
         void loadLibrary(); // the song count, used for the random start (D14)
       },
       (e: unknown) => {
@@ -52,23 +64,23 @@ export function useSkipRemove({ now, byId, myId, next }: { now: NowPlaying; byId
 
   function undo() {
     if (removal?.phase !== 'removed' && removal?.phase !== 'failed-restore') return;
-    const { target: t, position } = removal;
+    const { target: t, positions } = removal;
     const mine = ++seq.current;
     const update = (r: Removal) => mine === seq.current && setRemoval(r);
-    update({ phase: 'restoring', target: t, position });
-    restoreTrack(t, position).then(
+    update({ phase: 'restoring', target: t, positions });
+    restoreTrack(t, positions).then(
       () => {
         log('app', 'skip and remove: undone');
-        update({ phase: 'restored', target: t, position });
+        update({ phase: 'restored', target: t, positions });
         void loadLibrary();
       },
-      (e: unknown) => update({ phase: 'failed-restore', target: t, position, error: message(e) }),
+      (e: unknown) => update({ phase: 'failed-restore', target: t, positions, error: message(e) }),
     );
   }
 
   return {
     button: {
-      onClick: skipAndRemove,
+      onClick: () => void skipAndRemove(),
       disabled: 'reason' in target,
       title: 'reason' in target ? target.reason : `Skip this track and remove it from ${describePlaylist(target.playlistName).shortName}`,
     },
@@ -93,6 +105,12 @@ function RemovalLine({ removal, onUndo, onDismiss }: { removal: Removal; onUndo:
   const track = `“${removal.target.trackName}”`;
   const from = describePlaylist(removal.target.playlistName).shortName;
   switch (removal.phase) {
+    case 'changed':
+      return (
+        <p className="removal" role="status">
+          The track changed just before you pressed, so nothing was removed. {dismiss}
+        </p>
+      );
     case 'removing':
       return <p className="removal" role="status">Removing {track} from {from}…</p>;
     case 'removed':

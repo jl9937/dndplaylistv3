@@ -4,7 +4,7 @@ import { log } from '../diagnostics/log';
 import { renameLocally } from '../library/libraryStore';
 import { addTagToName, describePlaylist, markerTags, removeTagFromName, tagKey } from '../library/tags';
 import { canWritePlaylists } from '../playback/skipRemove';
-import { renamePlaylist } from '../spotify/api';
+import { getPlaylistName, renamePlaylist } from '../spotify/api';
 import type { Playlist } from '../spotify/types';
 
 // Tag a playlist (D31 #4): add one of the existing tags as a `[Tag]` marker, or take a marker
@@ -13,7 +13,7 @@ import type { Playlist } from '../spotify/types';
 type Rename =
   | { phase: 'needs-login' }
   | { phase: 'saving' | 'done' | 'undone'; playlistId: string; from: string; to: string }
-  | { phase: 'failed'; playlistId: string; from: string; to: string; error: string };
+  | { phase: 'failed'; playlistId: string; from: string; to: string; error: string; retry: () => void };
 
 const SHOW_MS = 20_000;
 
@@ -25,20 +25,33 @@ export function useRename() {
     return () => clearTimeout(t);
   }, [rename]);
 
-  async function apply(playlistId: string, from: string, to: string, undo = false): Promise<boolean> {
+  /**
+   * Rename from the playlist's *current* name in Spotify, not the cached one, so a rename
+   * made in Spotify since isn't undone. `change` turns that name into the new one.
+   */
+  async function apply(playlistId: string, change: (name: string) => string, undo = false): Promise<boolean> {
     if (!canWritePlaylists()) {
       setRename({ phase: 'needs-login' });
       return false;
     }
-    setRename({ phase: 'saving', playlistId, from, to });
+    let from = '';
+    let to = '';
     try {
+      from = await getPlaylistName(playlistId);
+      to = change(from);
+      if (to === from) {
+        renameLocally(playlistId, from);
+        return true;
+      }
+      setRename({ phase: 'saving', playlistId, from, to });
       await renamePlaylist(playlistId, to);
       renameLocally(playlistId, to);
       log('app', undo ? 'tag: undone' : 'tag: playlist renamed');
       setRename({ phase: undo ? 'undone' : 'done', playlistId, from, to });
       return true;
     } catch (e) {
-      setRename({ phase: 'failed', playlistId, from, to, error: e instanceof Error ? e.message : String(e) });
+      const retry = () => void apply(playlistId, change, undo);
+      setRename({ phase: 'failed', playlistId, from, to, error: e instanceof Error ? e.message : String(e), retry });
       return false;
     }
   }
@@ -46,8 +59,8 @@ export function useRename() {
   const line = rename && (
     <RenameLine
       rename={rename}
-      onUndo={() => rename.phase === 'done' && void apply(rename.playlistId, rename.to, rename.from, true)}
-      onRetry={() => rename.phase === 'failed' && void apply(rename.playlistId, rename.from, rename.to)}
+      onUndo={() => rename.phase === 'done' && void apply(rename.playlistId, () => rename.from, true)}
+      onRetry={() => rename.phase === 'failed' && rename.retry()}
       onDismiss={() => setRename(null)}
     />
   );
@@ -91,7 +104,7 @@ function RenameLine({ rename, onUndo, onRetry, onDismiss }: { rename: Rename; on
     case 'failed':
       return (
         <p className="notice bad" role="alert">
-          Couldn’t rename to {to}: {rename.error} <button onClick={onRetry}>Try again</button> {dismiss}
+          Couldn’t rename {rename.to ? <>to {to}</> : 'it'}: {rename.error} <button onClick={onRetry}>Try again</button> {dismiss}
         </p>
       );
   }
@@ -109,7 +122,8 @@ export function TagPicker({
   /** Every tag in the library, in its usual spelling, A–Z. */
   allTags: string[];
   busy: boolean;
-  onRename: (to: string) => void;
+  /** Called with how to change the name (applied to its current name in Spotify). */
+  onRename: (change: (name: string) => string) => void;
   onClose: () => void;
 }) {
   const has = describePlaylist(playlist.name).tags.map(tagKey);
@@ -118,12 +132,12 @@ export function TagPicker({
   return (
     <div className="tag-picker" role="group" aria-label={`Tags for ${describePlaylist(playlist.name).shortName}`}>
       {markers.map((t) => (
-        <button key={`x-${t}`} className="pill on" disabled={busy} onClick={() => onRename(removeTagFromName(playlist.name, t))} title={`Remove [${t}] from the name`}>
+        <button key={`x-${t}`} className="pill on" disabled={busy} onClick={() => onRename((name) => removeTagFromName(name, t))} title={`Remove [${t}] from the name`}>
           × {t}
         </button>
       ))}
       {addable.map((t) => (
-        <button key={t} className="pill" disabled={busy} onClick={() => onRename(addTagToName(playlist.name, t))} title={`Add [${t}] to the name`}>
+        <button key={t} className="pill" disabled={busy} onClick={() => onRename((name) => addTagToName(name, t))} title={`Add [${t}] to the name`}>
           + {t}
         </button>
       ))}

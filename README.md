@@ -38,6 +38,9 @@ The app deploys as a Worker with static assets only (no Worker script). [wrangle
 - Build command: `npm ci && npm test && npm run build`
 - Deploy command: `npx wrangler deploy`
 - Build variable: `VITE_SPOTIFY_CLIENT_ID` = your Client ID. It must be a build variable, not a runtime one, because Vite bakes it into the bundle.
+- Build variable: `VITE_SPOTIFY_OWNER_ID` = your Spotify user ID (Spotify → Account → *Username*). The **owner lock**: any other Spotify account that logs in is logged straight out. Unset, the lock is off (the Log says so). A new value only applies from the next deploy.
+
+**If a login is ever stolen:** Spotify has no way for the app to revoke its own tokens. Remove the app's access in your Spotify account (**Account → Apps → Remove access**), which ends every session at once.
 
 Leave **Cloudflare Access** off for the `workers.dev` URL (**Settings → Domains & Routes**). It adds a second login that can expire mid-session.
 

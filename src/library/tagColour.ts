@@ -19,7 +19,7 @@ export const UNTAGGED_COLOUR = '#6b5f55';
 export function tagColour(tag: string | null | undefined): string {
   const key = tagKey(tag ?? null);
   if (!key) return UNTAGGED_COLOUR;
-  if (FIXED[key]) return FIXED[key];
+  if (Object.hasOwn(FIXED, key)) return FIXED[key]; // not inherited keys like "constructor"
   let h = 0;
   for (const ch of key) h = (h * 31 + ch.codePointAt(0)!) >>> 0;
   return `hsl(${h % 360} 28% 46%)`;

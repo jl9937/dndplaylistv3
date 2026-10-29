@@ -196,6 +196,20 @@ describe('feature cache', () => {
   });
 });
 
+describe('feature cache size', () => {
+  it('stores compact rounded values and keeps only the newest tracks', async () => {
+    const { featuresFor, MAX_FOUND } = await import('../src/studio/featureCache');
+    const ids = Array.from({ length: MAX_FOUND + 10 }, (_, i) => `K${String(i).padStart(21, '0')}`);
+    await featuresFor(ids, { fetch: async (want) => new Map(want.map((i) => [i, feat({ energy: 0.123456 })])) });
+    const stored = JSON.parse(localStorage.getItem('cache.features')!) as { v: number; found: Record<string, number[]> };
+    expect(stored.v).toBe(2);
+    expect(Object.keys(stored.found)).toHaveLength(MAX_FOUND);
+    expect(stored.found[ids[0]]).toBeUndefined(); // the oldest went first
+    expect(stored.found[ids[ids.length - 1]][1]).toBe(0.123); // energy, rounded
+    expect(localStorage.getItem('cache.features')!.length / MAX_FOUND).toBeLessThan(110);
+  });
+});
+
 describe('tempo 0', () => {
   const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X', position: n });
 

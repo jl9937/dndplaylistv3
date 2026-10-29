@@ -33,6 +33,38 @@ describe('refresh', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it('a refresh that lands after logout doesn’t log you back in', async () => {
+    seedTokens();
+    let answer: (r: Response) => void = () => {};
+    stubFetch(() => new Promise<Response>((r) => (answer = r)));
+    const refreshing = refreshAfter401('A1');
+    await new Promise((r) => setTimeout(r, 0));
+    logout();
+    answer(json(200, { access_token: 'A2', refresh_token: 'R2', expires_in: 3600 }));
+    await expect(refreshing).rejects.toThrow('Logged out');
+    expect(readTokens()).toBeNull();
+    expect(getAuthStatus()).toBe('logged-out');
+  });
+
+  it('keeps the login when storage is full, by dropping the caches', async () => {
+    seedTokens();
+    write('cache.features', { big: true });
+    const real = localStorage.setItem.bind(localStorage);
+    let full = true;
+    localStorage.setItem = (k: string, v: string) => {
+      if (full && k === 'auth.tokens') {
+        full = false;
+        throw new DOMException('full', 'QuotaExceededError');
+      }
+      real(k, v);
+    };
+    stubFetch(() => json(200, { access_token: 'A2', expires_in: 3600 }));
+    expect(await refreshAfter401('A1')).toBe('A2');
+    expect(readTokens()?.accessToken).toBe('A2');
+    expect(read('cache.features')).toBeNull();
+    localStorage.setItem = real;
+  });
+
   it('stores a rotated refresh token at once and keeps loginAt', async () => {
     seedTokens({ loginAt: 123 });
     stubFetch(() => json(200, { access_token: 'A2', expires_in: 3600, refresh_token: 'R2' }));

@@ -208,7 +208,7 @@ export function Library({
                         playlist={p}
                         allTags={allTags}
                         busy={rename.saving}
-                        onRename={(to) => void rename.apply(p.id, p.name, to).then((ok) => ok && setTagging(null))}
+                        onRename={(change) => void rename.apply(p.id, change).then((ok) => ok && setTagging(null))}
                         onClose={() => setTagging(null)}
                       />
                     )}
