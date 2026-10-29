@@ -6,6 +6,7 @@ Status: **v1.0** (2026-10-29). Milestones 1–5 are built and deployed; see [Kno
 
 ## Docs
 
+- [docs/developing.md](docs/developing.md): **start here to work on the code**: code map, checking changes, shipping, conventions
 - [docs/research.md](docs/research.md): Spotify platform constraints (2026), hosting, auth and framework research
 - [docs/spec.md](docs/spec.md): product spec, architecture, milestones
 - [docs/milestone-1.md](docs/milestone-1.md): Milestone 1, with acceptance criteria and technical design
@@ -95,7 +96,7 @@ Other scripts: `npm test` (unit tests), `npm run typecheck`, `npm run build`, an
 
 ## Tags
 
-Tags come from playlist names in Spotify. Nothing is ever renamed by this app.
+Tags come from playlist names in Spotify. The app only renames a playlist when you add or remove a tag (**Library → ⋯ → Edit tags…**), and then only the `[Tag]` part.
 
 | Name in Spotify | Tags | Shown as |
 |---|---|---|

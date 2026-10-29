@@ -42,38 +42,37 @@ A small web app that sits on top of Spotify. **Before** the session, I pick a ha
 ```
 ┌────────────────────── Browser (static SPA, Vite + React + TS) ───────────────────────┐
 │                                                                                        │
-│  auth/        PKCE login, token refresh, logout                                        │
-│  spotify/     thin typed fetch client: me, playlists, devices, play, volume, shuffle  │
-│  playback/    play pipeline, devices, fallback, fader, now playing, Ready check        │
+│  auth/        PKCE login, token refresh, logout; owner lock (D35)                      │
+│  spotify/     typed fetch client: me, playlists, items, devices, play, volume, writes │
+│  playback/    play pipeline, devices, fallback, fader, now playing, Ready check,       │
+│               Skip & remove                                                            │
 │  player/      Web Playback SDK lifecycle → "This browser" as a Connect device          │
-│  library/     library cache, tags (names + config/tags.json), fuzzy search             │
-│  board/       the Board: scenes, sections, storage (with v1 migration)                 │
+│  library/     library cache, tags (names + config/tags.json), tag colours, search      │
+│  board/       the Board: scenes, sections, ambience presets, validated storage         │
+│  ambience/    Web Audio mixer: looping layers, per-layer gain, presets (M4)            │
+│  studio/      audio features (ReccoBeats, cached), outliers, suggestions, filing (M5)  │
 │  diagnostics/ event log (200, scrubbed)                                                │
-│  ui/          Library, Board, palette, strip, device picker, now playing               │
+│  ui/          Board, Library, Studio, Ambience, player bar, palette, strip, menus      │
 │  storage.ts   namespaced localStorage: auth.*, cache.*, prefs.*, sets.*               │
 │                                                                                        │
-│  later:                                                                                │
-│  ambience/    Web Audio engine: looping layers, per-layer gain (M4)                    │
-│  studio/      track table, features, charts, clustering, move tracks (M5)              │
-│               IndexedDB: cached audio features, imported sound files                   │
-│                                                                                        │
-└──────────────┬───────────────────────────────────────────────┬────────────────────────┘
-               │ HTTPS                                          │ HTTPS
-     accounts.spotify.com                                 api.spotify.com
-     (authorize, token)                                   (Web API, player)
-                                                               │
-                                               Spotify Connect device plays music
-                                    (this browser via SDK, desktop app, phone, speaker)
+└──────┬──────────────────────────────┬──────────────────────────────┬──────────────────┘
+       │ HTTPS                        │ HTTPS                        │ HTTPS
+accounts.spotify.com            api.spotify.com              api.reccobeats.com
+(authorize, token)              (Web API, player)            (audio features, IDs only)
+                                       │
+                       Spotify Connect device plays music
+            (this browser via SDK, desktop app, phone, speaker)
 
      Ambience audio (M4): plays from this browser through Web Audio, independent of Spotify.
-     Audio features (M5): third-party API, e.g. ReccoBeats (to be validated).
 ```
+
+As built at v1.0; [developing.md](developing.md) has a file-by-file map.
 
 The music and ambience audio paths are deliberately independent. If music plays on the phone, ambience still plays from the laptop.
 
 - **Hosting:** Cloudflare Workers static assets, at `https://dndplaylistv3.jim-lumsden.workers.dev/` (D7). Local dev on `http://127.0.0.1:5173/`.
 - **Redirect URI:** the app root (no `/callback` route), so no SPA fallback is needed for the login callback.
-- **Persistence:** `localStorage` only, with namespaced keys: `auth.*` (tokens), `cache.*` (the library), `prefs.*` (settings), `sets.*` (the Board, `sets.board`). No server, no database. Logout clears `auth.*` and `cache.*`.
+- **Persistence:** `localStorage` only, with namespaced keys: `auth.*` (tokens), `cache.*` (the library, audio features), `prefs.*` (settings), `sets.*` (the Board, `sets.board`). No server, no database. Logout clears `auth.*` and `cache.*`.
 - **Origin:** browser storage is shared by every page on the same origin. See D7.
 
 ## 7. Functional requirements by milestone
@@ -363,6 +362,8 @@ These are not committed designs. They record enough thinking that the early mile
 - **Scenes:** a scene can store `{ layerId, volume }[]`. Pressing the scene starts the playlist through the play pipeline and cross-fades the ambience to the preset.
 
 ### 13.4 Playlist Studio
+> **As built (v1.0, D32):** features come straight from ReccoBeats and are cached in localStorage (`cache.features`), not IndexedDB. There's no feature table, charts or k-means: outliers use z-scored distances to each playlist's centre, and suggestions rank playlists by shared composer and album with sound breaking ties. See [milestone-5.md](milestone-5.md). The plan below is kept as it was written.
+
 - **Blocker found in research:** Spotify's audio-features and audio-analysis endpoints (tempo, energy, loudness, valence, danceability…) return **403 for apps created after 27 Nov 2024 or in Development Mode** ([Spotify blog](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api)). Community reports say it will not be restored; Spotify itself offers no replacement. Track preview clips were removed for new apps at the same time, and full track audio is DRM-protected. So **we cannot get or compute these features from Spotify**.
 - **Plan:** fetch features from a third-party catalogue keyed by Spotify track ID, behind a swappable `FeatureProvider` interface with a permanent IndexedDB cache. There are two candidates, compared in [research.md §7.2](research.md#72-audio-features-for-the-playlist-studio):
   - **ReccoBeats:** free, no key, Spotify-*style* values.
