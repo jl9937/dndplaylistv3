@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { LibraryState } from '../library/libraryStore';
-import { describePlaylist, groupByTag, isListed, tagKey } from '../library/tags';
+import { describePlaylist, groupByTag, isListed, tagKey, tagLabels } from '../library/tags';
 import { songsLabel, type Playlist } from '../spotify/types';
 import { read, write } from '../storage';
 import { Cover } from './Cover';
 import { StatusBadge, type ItemStatus } from './Status';
+import { TagPicker, useRename } from './TagPicker';
 
 export function Library({
   library,
@@ -28,6 +29,8 @@ export function Library({
   onChooseDevice: () => void;
 }) {
   const [filter, setFilter] = useState('');
+  const [tagging, setTagging] = useState<string | null>(null);
+  const rename = useRename();
   // Tag pills: toggles that narrow the Library to some tags. None selected shows all.
   const [picked, setPickedState] = useState<Set<string>>(() => new Set(read<string[]>('prefs.libraryTags') ?? []));
   const setPicked = (fn: (prev: Set<string>) => Set<string>) =>
@@ -59,6 +62,10 @@ export function Library({
     return { groups: visible, pills: pillGroups, untagged: untaggedCount };
   }, [library, filter, showUntagged, picked]);
   const anyPicked = pills.some((g) => picked.has(g.key));
+  const allTags = useMemo(
+    () => (library.status === 'ok' ? [...tagLabels(library.playlists.map((p) => p.name)).values()].sort((a, b) => a.localeCompare(b)) : []),
+    [library],
+  );
 
   if (library.status === 'loading') return <p className="state">Loading playlists…</p>;
   if (library.status === 'error') {
@@ -98,6 +105,7 @@ export function Library({
           )}
         </div>
       )}
+      {rename.line}
       {library.refreshError && (
         <p className="hint subtle">
           Showing saved playlists; refreshing failed ({library.refreshError}). <button className="link" onClick={onRetry}>Retry</button>
@@ -112,6 +120,8 @@ export function Library({
             {g.items.map((p) => {
               const s = statusOf(p.id);
               const starred = isOnBoard(p.id);
+              const mine = p.owner.id === library.myId;
+              const key = `${g.key}:${p.id}`; // a playlist with several tags appears in several groups
               return (
                 <li key={p.id} className={`row ${s.status}`}>
                   <div className="row-main">
@@ -145,7 +155,26 @@ export function Library({
                     >
                       <span aria-hidden>{starred ? '★' : '☆'}</span> {starred ? 'On Board' : 'Add'}
                     </button>
+                    {mine && (
+                      <button
+                        className={`tag-toggle${tagging === key ? ' on' : ''}`}
+                        onClick={() => setTagging(tagging === key ? null : key)}
+                        aria-expanded={tagging === key}
+                        aria-label={`Tags for ${describePlaylist(p.name).shortName}`}
+                        title="Add or remove a tag (renames it in Spotify)"
+                      >
+                        #
+                      </button>
+                    )}
                   </div>
+                  {tagging === key && (
+                    <TagPicker
+                      playlist={p}
+                      allTags={allTags}
+                      busy={rename.saving}
+                      onRename={(to) => void rename.apply(p.id, p.name, to).then((ok) => ok && setTagging(null))}
+                    />
+                  )}
                   {s.status === 'failed' && (
                     <div className="failure">
                       <span>{s.reason}</span>

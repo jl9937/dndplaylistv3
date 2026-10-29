@@ -83,6 +83,14 @@ export async function loadLibrary(): Promise<void> {
   }
 }
 
+/** Show a rename at once (and keep it in the cache), without waiting for a refresh. */
+export function renameLocally(playlistId: string, name: string): void {
+  if (state.status !== 'ok') return;
+  const playlists = state.playlists.map((p) => (p.id === playlistId ? { ...p, name } : p));
+  write(CACHE_KEY, { at: state.fetchedAt, myId: state.myId, playlists } satisfies Cached);
+  ok(playlists, state.myId, state.fetchedAt, state.refreshError);
+}
+
 export function resetLibrary(): void {
   set({ status: 'loading' });
 }

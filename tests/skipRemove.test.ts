@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canWritePlaylists, removeTarget, removeTrack, restoreTrack } from '../src/playback/skipRemove';
-import { addToPlaylist, removeFromPlaylist } from '../src/spotify/api';
+import { addToPlaylist, removeFromPlaylist, renamePlaylist } from '../src/spotify/api';
 import type { PlaybackState, Playlist } from '../src/spotify/types';
 import { write } from '../src/storage';
 import { json, seedTokens, stubFetch } from './helpers';
@@ -80,9 +80,11 @@ describe('playlist write calls', () => {
     });
     await removeFromPlaylist('p1', ['spotify:track:T1']);
     await addToPlaylist('p1', ['spotify:track:T1'], 2);
+    await renamePlaylist('p1', 'Town: Desert Town [Desert]');
     expect(sent).toEqual([
       { method: 'DELETE', url: 'https://api.spotify.com/v1/playlists/p1/items', body: { items: [{ uri: 'spotify:track:T1' }] } },
       { method: 'POST', url: 'https://api.spotify.com/v1/playlists/p1/items', body: { uris: ['spotify:track:T1'], position: 2 } },
+      { method: 'PUT', url: 'https://api.spotify.com/v1/playlists/p1', body: { name: 'Town: Desert Town [Desert]' } },
     ]);
   });
 });

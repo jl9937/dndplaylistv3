@@ -49,6 +49,11 @@ export async function removeFromPlaylist(playlistId: string, trackUris: string[]
   await request('DELETE', `/playlists/${encodeURIComponent(playlistId)}/items`, { ...opts, body: { items } });
 }
 
+/** Rename a playlist I own (D31 #4: adding or removing a `[Tag]`). */
+export async function renamePlaylist(playlistId: string, name: string, opts: Opts = {}): Promise<void> {
+  await request('PUT', `/playlists/${encodeURIComponent(playlistId)}`, { ...opts, body: { name } });
+}
+
 /** Add tracks to a playlist, at a zero-based position, or at the end if none is given. */
 export async function addToPlaylist(playlistId: string, trackUris: string[], position?: number, opts: Opts = {}): Promise<void> {
   const body: Record<string, unknown> = { uris: trackUris };

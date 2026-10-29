@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByTag, parsePlaylistName, tagLabels } from '../src/library/tags';
+import { addTagToName, groupByTag, markerTags, parsePlaylistName, removeTagFromName, tagLabels } from '../src/library/tags';
 
 describe('parsePlaylistName', () => {
   it.each([
@@ -34,5 +34,27 @@ describe('groupByTag', () => {
     expect(groups.map((g) => g.label)).toEqual(['Combat', 'Town', 'Untagged']);
     expect(groups[1].items).toEqual(['Town: alpha', 'town: Beta', 'Town: Zeta']);
     expect(groups[2].items).toEqual(['Starred']);
+  });
+});
+
+describe('adding and removing a tag in a name (D31 #4)', () => {
+  it('adds a [Tag] marker at the end', () => {
+    expect(addTagToName('Town: Desert Town', 'Desert')).toBe('Town: Desert Town [Desert]');
+    expect(addTagToName('Wandering Bard ', 'Tavern')).toBe('Wandering Bard [Tavern]');
+  });
+
+  it('leaves a name alone if it already has the tag, in any case or form', () => {
+    expect(addTagToName('Town: Desert Town', 'town')).toBe('Town: Desert Town');
+    expect(addTagToName('Battle: Western [Badlands]', 'BADLANDS')).toBe('Battle: Western [Badlands]');
+  });
+
+  it('removes only that marker, tidying spaces', () => {
+    expect(removeTagFromName('Battle: Blades [Theme] in the Dark [Heist]', 'theme')).toBe('Battle: Blades in the Dark [Heist]');
+    expect(removeTagFromName('Town: Desert Town [Desert]', 'Desert')).toBe('Town: Desert Town');
+    expect(removeTagFromName('Town: Desert Town', 'Town')).toBe('Town: Desert Town'); // a prefix isn't a marker
+  });
+
+  it('lists the markers, not the Tag: prefix', () => {
+    expect(markerTags('Town: Asian [Asian] [Calm]')).toEqual(['Asian', 'Calm']);
   });
 });

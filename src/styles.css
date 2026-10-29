@@ -1281,3 +1281,41 @@ button.icon {
   align-items: center;
   gap: 0.4rem;
 }
+
+/* Tag a playlist (D31 #4) */
+.tag-toggle {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  margin: 0.3rem 0.5rem 0.3rem -0.2rem;
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.tag-toggle.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.75rem 0.7rem;
+}
+
+.tag-picker .hint {
+  flex-basis: 100%;
+  margin: 0.2rem 0 0;
+}
+
+.notice.warn {
+  color: var(--warn);
+}
+
+.notice.bad {
+  color: var(--bad);
+}

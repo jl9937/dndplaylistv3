@@ -168,7 +168,7 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 ## 10. Out of scope
 
 - Editing playlists before Milestone 5. From Milestone 5, only removing tracks, copying tracks between existing playlists, and adding a tag to a playlist's name (D31). No creating, deleting or reordering playlists.
-- Other renames in Spotify. Tag stripping stays display-only (see [§13.1](#131-tags-from-playlist-names)); the app only adds a tag (D31).
+- Other renames in Spotify: the app only adds or removes a `[Tag]` marker. Tag stripping stays display-only (see [§13.1](#131-tags-from-playlist-names)); the app only adds a tag (D31).
 - Reading the Spotify folder tree. The API does not support it, and reading the desktop app's local cache is fragile.
 - Multi-user accounts, sharing, or any server-side storage.
 - YouTube as an ambience source (adverts, and its terms forbid separating the audio from the player).

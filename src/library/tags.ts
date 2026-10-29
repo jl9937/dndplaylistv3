@@ -1,5 +1,6 @@
-// Tags parsed from playlist names (spec §13.1, D6). Display only: nothing is renamed in Spotify.
-// Extra tags and hide rules come from config/tags.json (D24).
+// Tags parsed from playlist names (spec §13.1, D6). Extra tags and hide rules come from
+// config/tags.json (D24). The only rename the app makes in Spotify is adding or removing a
+// `[Tag]` marker (D31 #4).
 
 import rawConfig from '../../config/tags.json';
 import { log } from '../diagnostics/log';
@@ -30,6 +31,23 @@ export function extractMarkers(shortName: string): { tags: string[]; rest: strin
   if (tags.length === 0) return { tags, rest: shortName };
   const rest = shortName.replace(MARKER, ' ').replace(/\s{2,}/g, ' ').trim();
   return { tags, rest: rest || shortName }; // a name that is only markers keeps its text
+}
+
+/** The `[Tag]` markers in a name: the tags the app can take off again. */
+export const markerTags = (name: string) => extractMarkers(parsePlaylistName(name).shortName).tags;
+
+/** `Town: Desert Town` + Desert → `Town: Desert Town [Desert]`. Unchanged if it already has that tag. */
+export function addTagToName(name: string, tag: string, describe = describePlaylist): string {
+  if (describe(name).tags.some((t) => tagKey(t) === tagKey(tag))) return name;
+  return `${name.trimEnd()} [${tag}]`;
+}
+
+/** Take a `[Tag]` marker out of a name (any case), tidying the spaces around it. */
+export function removeTagFromName(name: string, tag: string): string {
+  return name
+    .replace(/\s*\[([^[\]]+)\]/g, (m, t: string) => (tagKey(t.trim()) === tagKey(tag) ? '' : m))
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 /** Build a describer for a config. The app uses `describePlaylist` (config/tags.json). */
