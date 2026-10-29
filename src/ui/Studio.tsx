@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { startLogin } from '../auth/auth';
 import { loadLibrary } from '../library/libraryStore';
 import type { NowPlaying } from '../playback/nowPlaying';
@@ -11,8 +11,9 @@ import { evaluate, type EvalRow } from '../studio/recommend';
 import { useOutlierScan, usePref } from './hooks';
 import { Sorter } from './Sorter';
 
-// The Studio tab (Milestone 5). For now, outlier review (US-5-2): suggestions to listen to,
-// then remove or keep. Nothing is removed without a click, and removing can be undone.
+// The Studio tab (Milestone 5): a sidebar switching between sorting a holding playlist
+// (US-5-3) and outlier review (US-5-2), with one shared scan (UI direction B). Nothing is
+// changed without a click, and every change can be undone.
 
 type Row =
   | { phase: 'removing' | 'restoring' }
@@ -43,6 +44,14 @@ export function Studio({
   const [showKept, setShowKept] = useState(false);
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [view, setView] = usePref<'sort' | 'outliers'>('prefs.studioView', 'sort');
+  const [holdingId, setHoldingId] = usePref<string | null>('prefs.sortHolding', null);
+
+  // The first visit scans by itself: it only reads, and nothing here works without it.
+  useEffect(() => {
+    if (state.phase === 'idle' && playlists.length > 0) void scan(playlists);
+    // Once, on opening Studio.
+  }, []);
   const busy = state.phase === 'tracks' || state.phase === 'features';
   const keptSet = new Set(kept);
   const setRow = (key: string, row: Row | null) =>
@@ -92,60 +101,103 @@ export function Studio({
   const total = done ? done.playlists.reduce((a, p) => a + p.outliers.filter((o) => !keptSet.has(keyOf(p.id, o.track.id))).length, 0) : 0;
   const keptCount = done ? done.playlists.reduce((a, p) => a + p.outliers.filter((o) => keptSet.has(keyOf(p.id, o.track.id))).length, 0) : 0;
 
+  const holdingName = mine.find((p) => p.id === holdingId)?.name;
+  const scanLine =
+    state.phase === 'tracks' ? (
+      <>Reading playlists… {state.done} / {state.of}</>
+    ) : state.phase === 'features' ? (
+      <>Looking up new tracks… {state.done} / {state.of}</>
+    ) : done ? (
+      <>Scanned {ago(done.at)}</>
+    ) : (
+      <>Not scanned yet</>
+    );
+
   return (
     <section className="studio">
-      <p className="hint subtle">
-        Scan reads your tagged playlists, for sorting a holding playlist into them and for finding outliers. Sound comes from ReccoBeats,
-        which knows about two thirds of tracks.
-      </p>
-      <div className="studio-actions">
-        <button className="primary" onClick={() => void scan(playlists)} disabled={busy || playlists.length === 0}>
-          {done ? 'Scan again' : `Scan ${playlists.length} playlists`}
+      <nav className="studio-side" aria-label="Studio">
+        <h4>Studio</h4>
+        <button className={view === 'sort' ? 'on' : ''} aria-current={view === 'sort' ? 'page' : undefined} onClick={() => setView('sort')}>
+          Sort holding playlist
+          <small>{holdingName ? `From ${holdingName}` : 'Choose a playlist'}</small>
         </button>
-        {busy && <button onClick={stopScan}>Stop</button>}
-        {state.phase === 'tracks' && (
-          <span>
-            Reading playlists… {state.done} / {state.of}
-          </span>
-        )}
-        {state.phase === 'features' && (
-          <span>
-            Looking up new tracks… {state.done} / {state.of}
-          </span>
-        )}
-        {done && keptCount > 0 && (
-          <label className="studio-kept">
-            <input type="checkbox" checked={showKept} onChange={(e) => setShowKept(e.target.checked)} /> Show {keptCount} kept
-          </label>
-        )}
-      </div>
-      {state.phase === 'error' && <p className="error">{state.message}</p>}
-      {needsLogin && (
-        <p className="removal warn" role="status">
-          Spotify hasn’t allowed this app to change your playlists yet. Log in again once to allow it.{' '}
-          <button onClick={() => void startLogin()}>Log in again</button>
+        <button
+          className={view === 'outliers' ? 'on' : ''}
+          aria-current={view === 'outliers' ? 'page' : undefined}
+          onClick={() => setView('outliers')}
+        >
+          Outliers
+          <small>
+            {done
+              ? `${total} across ${withSuggestions.length} ${withSuggestions.length === 1 ? 'playlist' : 'playlists'}`
+              : 'Needs a scan'}
+          </small>
+        </button>
+        <p className="studio-scanned">
+          {scanLine}
+          <br />
+          {busy ? (
+            <button className="link" onClick={stopScan}>
+              Stop
+            </button>
+          ) : (
+            <button className="link" onClick={() => void scan(playlists)} disabled={playlists.length === 0}>
+              {done ? 'Scan again' : `Scan ${playlists.length} playlists`}
+            </button>
+          )}
         </p>
-      )}
-      {done && <Sorter mine={mine} scanned={done.inputs} scannedFeatures={done.features} onPlayAt={onPlayAt} />}
-      {done && (
-        <>
-          <h2>Outliers</h2>
-          <p className="hint subtle">
-            Tracks that sound unlike the rest of their playlist, judged on energy, mood, tempo, loudness and vocals. Suggestions only: give
-            each a listen, then remove it or keep it.
+        <p className="hint subtle studio-about">
+          Scan reads your tagged playlists. Sound comes from ReccoBeats, which knows about two thirds of tracks.
+        </p>
+      </nav>
+
+      <div className="studio-main">
+        {state.phase === 'error' && <p className="error">{state.message}</p>}
+        {needsLogin && (
+          <p className="removal warn" role="status">
+            Spotify hasn’t allowed this app to change your playlists yet. Log in again once to allow it.{' '}
+            <button onClick={() => void startLogin()}>Log in again</button>
           </p>
-          <p>
-            <strong>{total}</strong> {total === 1 ? 'suggestion' : 'suggestions'} in {withSuggestions.length}{' '}
-            {withSuggestions.length === 1 ? 'playlist' : 'playlists'}.
-            {done.tooShort > 0 && (
-              <span className="subtle">
-                {' '}
-                {done.tooShort} playlists have fewer than {MIN_FOR_OUTLIERS} tracks with features, so aren’t judged.
+        )}
+        {done?.failed.length ? <p className="error">Couldn’t read: {done.failed.join('; ')}</p> : null}
+        {!done ? (
+          <p className="state">{busy ? 'Scanning your playlists…' : 'Scan your playlists to start.'}</p>
+        ) : view === 'sort' ? (
+          <>
+            <Sorter
+              mine={mine}
+              holdingId={holdingId}
+              onHoldingChange={setHoldingId}
+              scanned={done.inputs}
+              scannedFeatures={done.features}
+              onPlayAt={onPlayAt}
+            />
+            <Accuracy key={done.at} run={() => evaluate(done.inputs, done.features)} />
+          </>
+        ) : (
+          <>
+            <h2>Outliers</h2>
+            <p className="hint subtle">
+              Tracks that sound unlike the rest of their playlist, judged on energy, mood, tempo, loudness and vocals. Suggestions only:
+              give each a listen, then remove it or keep it.
+            </p>
+            <p className="studio-summary">
+              <span>
+                <strong>{total}</strong> {total === 1 ? 'suggestion' : 'suggestions'} in {withSuggestions.length}{' '}
+                {withSuggestions.length === 1 ? 'playlist' : 'playlists'}.
+                {done.tooShort > 0 && (
+                  <span className="subtle">
+                    {' '}
+                    {done.tooShort} playlists have fewer than {MIN_FOR_OUTLIERS} tracks with features, so aren’t judged.
+                  </span>
+                )}
               </span>
-            )}
-          </p>
-          {done.failed.length > 0 && <p className="error">Couldn’t read: {done.failed.join('; ')}</p>}
-          <Accuracy key={done.at} run={() => evaluate(done.inputs, done.features)} />
+              {keptCount > 0 && (
+                <label className="studio-kept">
+                  <input type="checkbox" checked={showKept} onChange={(e) => setShowKept(e.target.checked)} /> Show {keptCount} kept
+                </label>
+              )}
+            </p>
           {withSuggestions.map((p) => {
             const playlist = byId.get(p.id);
             return (
@@ -182,15 +234,17 @@ export function Studio({
                               ) : (
                                 <>
                                   <button onClick={() => playlist && onPlayAt(playlist, o.track.position)} disabled={!playlist}>
-                                    Play
+                                    <span aria-hidden>▶</span> Play
                                   </button>
-                                  <button onClick={() => remove(p, o)}>Remove</button>
+                                  <button className="danger-outline" onClick={() => remove(p, o)}>
+                                    Remove
+                                  </button>
                                   {isKept ? (
-                                    <button onClick={() => unkeep(key)} title="Suggest it again">
+                                    <button className="quiet" onClick={() => unkeep(key)} title="Suggest it again">
                                       Unkeep
                                     </button>
                                   ) : (
-                                    <button onClick={() => keep(key)} title="It fits: stop suggesting it">
+                                    <button className="quiet" onClick={() => keep(key)} title="It fits: stop suggesting it">
                                       Keep
                                     </button>
                                   )}
@@ -206,11 +260,17 @@ export function Studio({
               </div>
             );
           })}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
+
+const ago = (at: number) => {
+  const min = Math.round((Date.now() - at) / 60_000);
+  return min < 1 ? 'just now' : min === 1 ? '1 min ago' : `${min} min ago`;
+};
 
 /**
  * How good playlist suggestions would be (US-5-3), measured on this library: each track is

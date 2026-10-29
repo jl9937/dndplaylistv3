@@ -8,7 +8,6 @@ import type { PlaylistInput } from '../studio/coverage';
 import { featuresFor } from '../studio/featureCache';
 import type { Features } from '../studio/reccobeats';
 import { buildIndex, SORTER_WEIGHTS, suggest } from '../studio/recommend';
-import { usePref } from './hooks';
 
 // Sort a holding playlist (US-5-3): for each of its tracks, the playlists it most likely
 // belongs in, with the reason, and Copy. The holding playlist itself is never changed.
@@ -28,18 +27,22 @@ const uri = (trackId: string) => `spotify:track:${trackId}`;
 
 export function Sorter({
   mine,
+  holdingId,
+  onHoldingChange,
   scanned,
   scannedFeatures,
   onPlayAt,
 }: {
   /** Every playlist I own, tagged or not: the choices for the holding playlist. */
   mine: Playlist[];
+  /** The chosen holding playlist (remembered by Studio). */
+  holdingId: string | null;
+  onHoldingChange: (playlistId: string | null) => void;
   /** The scanned playlists: where tracks can go. */
   scanned: PlaylistInput[];
   scannedFeatures: Map<string, Features>;
   onPlayAt: (p: Playlist, position: number) => void;
 }) {
-  const [holdingId, setHoldingId] = usePref<string | null>('prefs.sortHolding', null);
   const [holding, setHolding] = useState<Holding>({ phase: 'idle' });
   const [copies, setCopies] = useState<Record<string, Copy>>({});
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -114,7 +117,7 @@ export function Sorter({
       </p>
       <label className="sorter-pick">
         Holding playlist{' '}
-        <select value={holdingId ?? ''} onChange={(e) => setHoldingId(e.target.value || null)}>
+        <select value={holdingId ?? ''} onChange={(e) => onHoldingChange(e.target.value || null)}>
           <option value="">Choose…</option>
           {choices.map((p) => (
             <option key={p.id} value={p.id}>
@@ -152,46 +155,71 @@ export function Sorter({
                       {t.name} <span className="subtle">— {t.artists}</span>
                       {already.length > 0 && <span className="sorter-already">Already in {already.join(', ')}</span>}
                     </span>
-                    {holdingPlaylist && <button onClick={() => onPlayAt(holdingPlaylist, t.position)}>Play</button>}
+                    {holdingPlaylist && (
+                      <button onClick={() => onPlayAt(holdingPlaylist, t.position)}>
+                        <span aria-hidden>▶</span> Play
+                      </button>
+                    )}
                   </div>
-                  <ul className="sorter-suggestions">
+                  <div className="sorter-suggestions">
                     {[...shown].map((pid) => {
-                      const s = top.find((x) => x.playlistId === pid);
+                      const sg = top.find((x) => x.playlistId === pid);
                       const c = copies[key(t.id, pid)];
+                      const why = sg && sg.reasons.length > 0 ? sg.reasons.join(', ') : null;
+                      if (c?.phase === 'copied') {
+                        return (
+                          <div key={pid} className="suggestion done">
+                            <span className="suggestion-name">
+                              <span aria-hidden>✓ </span>
+                              {nameOf(pid)}
+                            </span>
+                            <span className="suggestion-why">
+                              Copied ·{' '}
+                              <button className="link" onClick={() => undo(t, pid)}>
+                                Undo
+                              </button>
+                            </span>
+                          </div>
+                        );
+                      }
+                      const working = c?.phase === 'copying' || c?.phase === 'undoing';
                       return (
-                        <li key={pid}>
-                          {c?.phase === 'copied' ? (
-                            <>
-                              <span className="ok">✓ Copied</span> <button onClick={() => undo(t, pid)}>Undo</button>
-                            </>
-                          ) : c?.phase === 'copying' || c?.phase === 'undoing' ? (
-                            <span className="subtle">{c.phase === 'copying' ? 'Copying…' : 'Undoing…'}</span>
-                          ) : (
-                            <button onClick={() => copy(t, pid)}>Copy</button>
-                          )}{' '}
-                          {nameOf(pid)}
-                          {s && s.reasons.length > 0 && <span className="subtle"> · {s.reasons.join(', ')}</span>}
-                          {c?.phase === 'failed' && <span className="error"> {c.error}</span>}
-                        </li>
+                        <button
+                          key={pid}
+                          className={`suggestion${c?.phase === 'failed' ? ' failed' : ''}`}
+                          onClick={() => copy(t, pid)}
+                          disabled={working}
+                          title={`Copy “${t.name}” to ${nameOf(pid)}`}
+                        >
+                          <span className="suggestion-name">
+                            <span aria-hidden>+ </span>
+                            {nameOf(pid)}
+                          </span>
+                          <span className="suggestion-why">
+                            {c?.phase === 'copying' ? 'Copying…' : c?.phase === 'undoing' ? 'Undoing…' : c?.phase === 'failed' ? `${c.error} · try again` : why}
+                          </span>
+                        </button>
                       );
                     })}
-                    {top.length === 0 && copied.length === 0 && <li className="subtle">No suggestion: no shared composer or album, and no features.</li>}
-                  </ul>
-                  <select
-                    className="sorter-other"
-                    value=""
-                    onChange={(e) => e.target.value && copy(t, e.target.value)}
-                    aria-label={`Copy ${t.name} to another playlist`}
-                  >
-                    <option value="">Copy to another playlist…</option>
-                    {others
-                      .filter((s) => !shown.has(s.playlistId))
-                      .map((s) => (
-                        <option key={s.playlistId} value={s.playlistId}>
-                          {s.name}
-                        </option>
-                      ))}
-                  </select>
+                    {top.length === 0 && copied.length === 0 && (
+                      <span className="subtle sorter-none">No suggestion: no shared composer or album, and no features.</span>
+                    )}
+                    <select
+                      className="sorter-other"
+                      value=""
+                      onChange={(e) => e.target.value && copy(t, e.target.value)}
+                      aria-label={`Copy ${t.name} to another playlist`}
+                    >
+                      <option value="">Other playlist…</option>
+                      {others
+                        .filter((s) => !shown.has(s.playlistId))
+                        .map((s) => (
+                          <option key={s.playlistId} value={s.playlistId}>
+                            {s.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </li>
               );
             })}
