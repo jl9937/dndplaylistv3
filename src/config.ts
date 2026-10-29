@@ -5,7 +5,10 @@ export const BUILD_ID: string = typeof __BUILD_ID__ === 'undefined' ? 'test' : _
 export const API_BASE = 'https://api.spotify.com/v1';
 export const ACCOUNTS_BASE = 'https://accounts.spotify.com';
 
-/** Spec §9. The last three are required by the Web Playback SDK (Milestone 1b). */
+/** Spec §9. streaming and user-read-* are required by the Web Playback SDK (Milestone 1b). */
+/** Milestone 5 (D31, D33): remove, copy and rename. Asked for at login, so older tokens lack them. */
+export const WRITE_SCOPES = ['playlist-modify-private', 'playlist-modify-public'];
+
 export const SCOPES = [
   'playlist-read-private',
   'playlist-read-collaborative',
@@ -14,6 +17,7 @@ export const SCOPES = [
   'streaming',
   'user-read-email',
   'user-read-private',
+  ...WRITE_SCOPES,
 ];
 
 /** The app root is the redirect URI: http://127.0.0.1:5173/ in dev, the workers.dev URL in production. */

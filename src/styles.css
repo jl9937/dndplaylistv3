@@ -1276,3 +1276,22 @@ ul.spike-list {
   margin: 0.3rem 0;
   padding-left: 1.2rem;
 }
+
+/* Skip and remove (D31): the line with Undo, above the docked player bar */
+.removal {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.removal.warn {
+  color: var(--warn);
+}
+
+.removal.bad {
+  color: var(--bad);
+}

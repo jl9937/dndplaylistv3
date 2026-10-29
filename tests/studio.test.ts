@@ -38,8 +38,8 @@ describe('playlist tracks', () => {
       });
     });
     expect(await getPlaylistTracks('p')).toEqual([
-      { id: id(1), name: 'One', artists: 'A, B' },
-      { id: id(3), name: 'Old field', artists: '' },
+      { id: id(1), name: 'One', artists: 'A, B', position: 0 },
+      { id: id(3), name: 'Old field', artists: '', position: 4 },
     ]);
   });
 });
@@ -89,7 +89,7 @@ describe('ReccoBeats', () => {
 });
 
 describe('coverage summary', () => {
-  const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X' });
+  const t = (n: number) => ({ id: id(n), name: `Track ${n}`, artists: 'X', position: n });
 
   it('counts found tracks per playlist and overall, sharing tracks once', () => {
     const features = new Map([

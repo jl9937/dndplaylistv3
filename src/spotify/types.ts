@@ -67,6 +67,8 @@ export interface Track {
   id: string;
   name: string;
   artists: string;
+  /** Index in the playlist, counting local files and episodes too: what Spotify's position means. */
+  position: number;
 }
 
 export function trackCount(p: Playlist): number | undefined {

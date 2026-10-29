@@ -163,7 +163,7 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 | `streaming` | Web Playback SDK | 1b |
 | `user-read-email`, `user-read-private` | Required by the Web Playback SDK | 1b |
 | `user-read-currently-playing` | Now-playing strip (may be covered by `user-read-playback-state`) | 2, only if needed |
-| `playlist-modify-private`, `playlist-modify-public` | Skip and remove, copy tracks between playlists, add a tag to a playlist's name (D31). Both cover removing items and changing a playlist's details. Scopes are asked for at login, not set in the developer dashboard | 5; when they are requested is decided in the spike |
+| `playlist-modify-private`, `playlist-modify-public` | Skip and remove, copy tracks between playlists, add a tag to a playlist's name (D31). Both cover removing items and changing a playlist's details. Scopes are asked for at login, not set in the developer dashboard | 5, asked for at login (D33) |
 
 ## 10. Out of scope
 
@@ -208,6 +208,8 @@ Split into 2a and 2b (D18). 2a is detailed in [milestone-2a.md](milestone-2a.md)
 | D29 | Pressing a tile with ambience | **Crossfade to the tile's preset over 3 s.** A tile without a preset leaves the ambience as it is | Lets a few tiles set the mood and the rest only change music |
 | D30 | Where the mixer lives | **An Ambience tab** (`#/ambience`), a compact control in the player dock, and an **≈** button on each tile to save the current mix | Keeps the Board's tiles large |
 | D31 | Milestone 5 scope (2026-10-29) | Four requests: **skip and remove** in the player bar, **outliers** within a playlist, **copy a holding playlist's tracks to recommended playlists**, and **add a tag** to a playlist (renamed in Spotify). See §7, Milestone 5 | The app gets write access to Jim's playlists, which supersedes D25's "the app stays read-only". Removing a track is undoable. Renaming only adds a tag |
+| D32 | Spike outcome (2026-10-29) | **ReccoBeats** is the feature source; the RapidAPI service is dropped. Outliers are **suggestions to listen to**, never automatic removals, judged against each playlist's own spread, with the reason shown (tempo kept; a tempo of 0 counts as unknown). **Recommendations** rank playlists mainly by shared composer, album and existing playlists, with features as a tie-breaker | Coverage is 64% and features put only about 10% of tracks closest to their own playlist, because orchestral scores all look alike to them. Jim confirmed some outlier catches (a sung track in an instrumental battle playlist; an upbeat track in a gloomy one) and wants a quick listen before deciding. See research.md §7.2 |
+| D33 | When write access is asked for (2026-10-29) | **At login.** One extra consent screen, once | Nothing interrupts a session with a trip to Spotify's login. Tokens from before Milestone 5 lack it: the first write asks Jim to log in again and changes nothing. See [milestone-5.md](milestone-5.md) |
 | D12 | Compact mode | **A then B.** (A) A button switches to a docked narrow strip: compact layout, and the window resizes and moves itself to the screen edge. (B) An always-on-top floating strip using Document Picture-in-Picture (Chrome/Edge), tested early in Milestone 2. | A is the reliable baseline. B is the target experience if the spike passes. See [§13.5](#135-compact-mode). |
 
 ### Open questions

@@ -14,6 +14,7 @@ export function PlayerBar({
   onNext,
   docked = false,
   fade,
+  skipRemove,
 }: {
   press: PressState;
   now: NowPlaying;
@@ -25,6 +26,8 @@ export function PlayerBar({
   docked?: boolean;
   /** The soft-transition toggle, shown in the docked bar. */
   fade?: { on: boolean; toggle: () => void };
+  /** Skip and remove (D31), shown in the docked bar. */
+  skipRemove?: { onClick: () => void; disabled: boolean; title: string };
 }) {
   const pressedName = press.status !== 'idle' && press.playlistId ? byId.get(press.playlistId)?.name : undefined;
   const short = (name: string | undefined) => (name ? describePlaylist(name).shortName : 'Spotify');
@@ -90,6 +93,11 @@ export function PlayerBar({
         <button onClick={onNext} disabled={!canControl || !now.state}>
           Next
         </button>
+        {skipRemove && (
+          <button onClick={skipRemove.onClick} disabled={!canControl || skipRemove.disabled} title={skipRemove.title}>
+            Skip &amp; remove
+          </button>
+        )}
       </span>
     </section>
   );

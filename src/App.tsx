@@ -18,6 +18,7 @@ import { trackCount, type Playlist } from './spotify/types';
 import { write } from './storage';
 import { Ambience, AmbienceMini } from './ui/Ambience';
 import { Board, type TileAmbience } from './ui/Board';
+import { useSkipRemove } from './ui/SkipRemove';
 import { Spike } from './ui/Spike';
 import { canFloat } from './ui/compact';
 import { DebugPanel } from './ui/DebugPanel';
@@ -128,6 +129,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   };
   const togglePause = () => playback.togglePause(pref, now.state);
   const next = () => void playback.next(pref, now.state).then(() => setTimeout(() => void refreshNowPlaying(), 600));
+  const skipRemove = useSkipRemove({ now, byId, myId: library.status === 'ok' ? library.myId : null, next });
 
   useShortcuts(
     {
@@ -297,6 +299,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
       )}
       <div className="player-dock">
         <AmbienceMini engine={ambience} state={amb} onOpen={() => go('ambience')} />
+        {skipRemove.notice}
         <PlayerBar
           docked
           fade={{ on: fadeOn, toggle: () => setFadeOn(!fadeOn) }}
@@ -306,6 +309,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           canControl={!!pref}
           onToggle={togglePause}
           onNext={next}
+          skipRemove={skipRemove.button}
         />
       </div>
       {floating}

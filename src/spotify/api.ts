@@ -29,16 +29,32 @@ export async function getMyPlaylists(): Promise<Playlist[]> {
 export async function getPlaylistTracks(playlistId: string, opts: Opts = {}): Promise<Track[]> {
   const all: Track[] = [];
   let next: string | null = `/playlists/${encodeURIComponent(playlistId)}/items?limit=50`;
+  let position = 0;
   while (next) {
     const page: Paging<PlaylistEntry | null> = (await request<Paging<PlaylistEntry | null>>('GET', next, opts)).data!;
     for (const e of page.items) {
       const t = e?.item ?? e?.track;
+      const at = position++;
       if (!t?.id || e?.is_local || (t.type && t.type !== 'track')) continue;
-      all.push({ id: t.id, name: t.name ?? '', artists: (t.artists ?? []).map((a) => a.name).join(', ') });
+      all.push({ id: t.id, name: t.name ?? '', artists: (t.artists ?? []).map((a) => a.name).join(', '), position: at });
     }
     next = page.next;
   }
   return all;
+}
+
+/** Remove every occurrence of these tracks from a playlist I own (D31). */
+export async function removeFromPlaylist(playlistId: string, trackUris: string[], opts: Opts = {}): Promise<void> {
+  const items = trackUris.map((uri) => ({ uri }));
+  await request('DELETE', `/playlists/${encodeURIComponent(playlistId)}/items`, { ...opts, body: { items } });
+}
+
+/** Add tracks to a playlist, at a zero-based position, or at the end if none is given. */
+export async function addToPlaylist(playlistId: string, trackUris: string[], position?: number, opts: Opts = {}): Promise<void> {
+  const body: Record<string, unknown> = { uris: trackUris };
+  if (position !== undefined) body.position = position;
+  // No automatic 5xx retry: if the first attempt did land, a retry would add the track twice.
+  await request('POST', `/playlists/${encodeURIComponent(playlistId)}/items`, { retry5xx: false, ...opts, body });
 }
 
 export async function getDevices(opts: Opts = {}): Promise<Device[]> {
