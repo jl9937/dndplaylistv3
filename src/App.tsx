@@ -23,7 +23,7 @@ import { scannable } from './studio/outlierScan';
 import { Studio } from './ui/Studio';
 import { canFloat } from './ui/compact';
 import { DebugPanel } from './ui/DebugPanel';
-import { DevicePicker } from './ui/DevicePicker';
+import { DeviceButton, DevicePicker } from './ui/DevicePicker';
 import { useAmbience, useAuthStatus, useAutoplayBlocked, useBoard, useLibrary, useNowPlaying, usePref, usePressState } from './ui/hooks';
 import { Library } from './ui/Library';
 import { LoginScreen } from './ui/LoginScreen';
@@ -66,6 +66,7 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   const [showUntagged, setShowUntagged] = usePref('prefs.showUntagged', false);
   const [fadeOn, setFadeOn] = usePref(FADE_PREF, true);
   const deviceSelect = useRef<HTMLSelectElement>(null);
+  const [devicesOpen, setDevicesOpen] = useState(() => pref === null); // first run: choose a device
   const strip = useStripMode(setNotice);
   const [route, go] = useRoute(board.scenes.length > 0 ? 'board' : 'library');
 
@@ -101,8 +102,8 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
   const toggleBoard = (p: Playlist) => updateBoard((b) => toggleOnBoard(b, p));
 
   const chooseDevice = () => {
-    deviceSelect.current?.scrollIntoView({ block: 'center' });
-    deviceSelect.current?.focus();
+    setDevicesOpen(true);
+    setTimeout(() => deviceSelect.current?.focus(), 0); // once the picker has opened
     void deviceStore.refresh().catch(() => {});
   };
 
@@ -242,15 +243,6 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           <button onClick={() => strip.pip!.close()}>Close it</button>
         </p>
       )}
-      <DevicePicker
-        ref={deviceSelect}
-        pref={pref}
-        onChange={(p) => {
-          saveDevicePref(p);
-          setPref(p);
-          setNotice(null);
-        }}
-      />
       {notice && (
         <p className="notice">
           {notice}{' '}
@@ -327,6 +319,20 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
           onToggle={togglePause}
           onNext={next}
           skipRemove={skipRemove.button}
+          device={
+            <DeviceButton pref={pref} open={devicesOpen} onOpenChange={setDevicesOpen}>
+              <DevicePicker
+                ref={deviceSelect}
+                pref={pref}
+                onChange={(p) => {
+                  saveDevicePref(p);
+                  setPref(p);
+                  setNotice(null);
+                  setDevicesOpen(false);
+                }}
+              />
+            </DeviceButton>
+          }
         />
       </div>
       {floating}

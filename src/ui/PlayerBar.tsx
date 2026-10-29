@@ -1,6 +1,7 @@
 import { describePlaylist } from '../library/tags';
 import type { NowPlaying } from '../playback/nowPlaying';
 import type { PressState } from '../playback/pipeline';
+import type { ReactNode } from 'react';
 import { pickCover, type Playlist } from '../spotify/types';
 import { parsePlaylistId } from '../spotify/uri';
 import { Cover } from './Cover';
@@ -15,6 +16,7 @@ export function PlayerBar({
   docked = false,
   fade,
   skipRemove,
+  device,
 }: {
   press: PressState;
   now: NowPlaying;
@@ -28,6 +30,8 @@ export function PlayerBar({
   fade?: { on: boolean; toggle: () => void };
   /** Skip and remove (D31), shown in the docked bar. */
   skipRemove?: { onClick: () => void; disabled: boolean; title: string };
+  /** The "Plays on" button, at the right of the docked bar. */
+  device?: ReactNode;
 }) {
   const pressedName = press.status !== 'idle' && press.playlistId ? byId.get(press.playlistId)?.name : undefined;
   const short = (name: string | undefined) => (name ? describePlaylist(name).shortName : 'Spotify');
@@ -67,9 +71,56 @@ export function PlayerBar({
   const isPlaying = !!now.state?.is_playing;
   // The playing track's album art, or none: not the playlist's cover (Jim, 2026-10-29).
   const art = now.state?.item?.album?.images;
+  if (docked) {
+    // UI direction B: what's playing | transport (Fade, Pause, Next) | device, Skip & remove.
+    return (
+      <section className={`player-bar ${tone} docked`} aria-live="polite">
+        <span className="player-left">
+          {pickCover(art) && <Cover images={art} className="now-cover" />}
+          <span className="now">
+            <span className="now-line">{line}</span>
+            {sub && <span className="now-sub">{sub}</span>}
+          </span>
+        </span>
+        <span className="transport">
+          {fade && (
+            <button
+              className={`fade-switch${fade.on ? ' on' : ''}`}
+              role="switch"
+              aria-checked={fade.on}
+              onClick={fade.toggle}
+              title="Fade the music out before switching playlist"
+            >
+              <span className="switch" aria-hidden />
+              Fade
+            </button>
+          )}
+          <button
+            className="play-pause"
+            onClick={onToggle}
+            disabled={!canControl}
+            aria-label={isPlaying ? 'Pause' : 'Resume'}
+            title={isPlaying ? 'Pause' : 'Resume'}
+          >
+            <span aria-hidden>{isPlaying ? '❚❚' : '▶'}</span>
+          </button>
+          <button className="next" onClick={onNext} disabled={!canControl || !now.state}>
+            Next <span aria-hidden>›</span>
+          </button>
+        </span>
+        <span className="player-right">
+          {device}
+          {skipRemove && (
+            <button className="skip-remove" onClick={skipRemove.onClick} disabled={!canControl || skipRemove.disabled} title={skipRemove.title}>
+              Skip &amp; remove
+            </button>
+          )}
+        </span>
+      </section>
+    );
+  }
   return (
-    <section className={`player-bar ${tone}${docked ? ' docked' : ''}`} aria-live="polite">
-      {docked && pickCover(art) && <Cover images={art} className="now-cover" />}
+    <section className={`player-bar ${tone}`} aria-live="polite">
       <span className="now">
         <span className="now-line">{line}</span>
         {sub && <span className="now-sub">{sub}</span>}
@@ -85,7 +136,7 @@ export function PlayerBar({
             {fade.on ? '✓ Fade' : 'Fade off'}
           </button>
         )}
-        <button className={docked ? 'primary' : undefined} onClick={onToggle} disabled={!canControl}>
+        <button onClick={onToggle} disabled={!canControl}>
           {isPlaying ? 'Pause' : 'Resume'}
         </button>
         <button onClick={onNext} disabled={!canControl || !now.state}>

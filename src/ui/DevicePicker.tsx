@@ -1,4 +1,4 @@
-import { useEffect, type Ref } from 'react';
+import { useEffect, useRef, type ReactNode, type Ref } from 'react';
 import { startLogin } from '../auth/auth';
 import { deviceStore, firstRunDefault, isUsable, matchDevice, type DevicePref } from '../playback/devices';
 import { takeOverPlayer, webPlayback } from '../player/instance';
@@ -104,5 +104,54 @@ function SdkLine() {
       In-browser player: {describeSdk(sdk)} {action}
       {sdk.state === 'recovering' && <button className="link" onClick={() => void webPlayback.recover()}>Retry now</button>}
     </p>
+  );
+}
+
+/**
+ * "Plays on" as a compact button in the player bar (UI direction B). The dot is green when
+ * the chosen device is ready, amber when it needs attention. It opens the full picker above
+ * the bar, with its hints.
+ */
+export function DeviceButton({ pref, open, onOpenChange, children }: { pref: DevicePref | null; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
+  const { devices: all } = useDevices();
+  const sdk = useSdkStatus();
+  const box = useRef<HTMLDivElement>(null);
+  const devices = all.filter((d) => d.name !== SDK_PLAYER_NAME);
+  const browser = isBrowserPref(pref);
+  const ready = !!pref && (browser ? sdk.state === 'ready' : !!matchDevice(devices, pref));
+  const label = !pref ? 'Choose where music plays' : browser ? 'This browser' : pref.name;
+
+  // The picker used to load the device list on page load; the button does now, for its dot.
+  useEffect(() => {
+    deviceStore.refresh().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) onOpenChange(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onOpenChange(false);
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open, onOpenChange]);
+
+  return (
+    <div className="device-box" ref={box}>
+      <button
+        className={`device-button${pref ? '' : ' needs'}`}
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+        title={ready ? `Plays on ${label}` : 'Where the music plays: needs attention'}
+      >
+        <span className={`led ${ready ? 'ok' : 'warn'}`} aria-hidden />
+        <span className="device-label">{pref ? <>Plays on: {label}</> : label}</span> <span aria-hidden>▾</span>
+      </button>
+      {open && <div className="device-pop">{children}</div>}
+    </div>
   );
 }

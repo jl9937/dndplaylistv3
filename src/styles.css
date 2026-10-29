@@ -1004,10 +1004,19 @@ button.icon {
   max-width: 1440px;
   margin: 0 auto;
   padding: 0.75rem 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 1rem;
   background: none;
   border: none;
   border-radius: 0;
+}
+
+.player-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .player-bar.docked .now-line {
@@ -1019,10 +1028,157 @@ button.icon {
   font-size: 0.9rem;
 }
 
-.player-bar.docked .controls button {
+/* Transport: one round primary button, everything else quieter (UI direction B). */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.play-pause {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  padding: 0;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a140e;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.play-pause:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.transport .next {
   min-height: 44px;
-  min-width: 5.5rem;
-  font-size: 1rem;
+  padding: 0 1rem;
+  border-radius: 22px;
+}
+
+.fade-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  background: none;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.fade-switch .switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--line);
+  transition: background 0.15s;
+}
+
+.fade-switch .switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+
+.fade-switch.on {
+  color: var(--text);
+}
+
+.fade-switch.on .switch {
+  background: var(--accent);
+}
+
+.fade-switch.on .switch::after {
+  background: #1a140e;
+  transform: translateX(12px);
+}
+
+.player-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+/* Destructive, so set apart and red: never mistaken for Next. */
+.skip-remove {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  background: none;
+  border-color: rgba(227, 106, 92, 0.45);
+  color: var(--bad);
+  white-space: nowrap;
+}
+
+.skip-remove:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* "Plays on" in the player bar, opening the full picker above it. */
+.device-box {
+  position: relative;
+  min-width: 0;
+}
+
+.device-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  background: none;
+  color: var(--muted);
+}
+
+.device-button.needs {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.device-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.led {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.led.ok {
+  background: var(--ok);
+}
+
+.led.warn {
+  background: var(--warn);
+}
+
+.device-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.6rem);
+  z-index: 10;
+  width: min(34rem, 90vw);
+  padding: 0.75rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .now-cover {
