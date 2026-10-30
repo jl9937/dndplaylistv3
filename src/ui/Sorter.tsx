@@ -50,7 +50,7 @@ export function Sorter({
   /** The scanned playlists: where tracks can go. */
   scanned: PlaylistInput[];
   scannedFeatures: Map<string, Features>;
-  onPlayAt: (p: Playlist, position: number) => void;
+  onPlayAt: (p: Playlist, trackId: string) => void;
 }) {
   const [holding, setHolding] = useState<Holding>({ phase: 'idle' });
   const [copies, setCopies] = useState<Record<string, Copy>>({});
@@ -213,7 +213,7 @@ export function Sorter({
                       <HeldLine h={held[t.id]} name={holdingPlaylist?.name} onRetry={() => retryHeld(t)} />
                     </span>
                     {holdingPlaylist && (
-                      <button onClick={() => onPlayAt(holdingPlaylist, t.position)}>
+                      <button onClick={() => onPlayAt(holdingPlaylist, t.id)}>
                         <span aria-hidden>▶</span> Play
                       </button>
                     )}

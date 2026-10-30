@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { canWritePlaylists, removeTarget, removeTrack, restoreTrack, stillPlaying } from '../src/playback/skipRemove';
-import { addToPlaylist, removeFromPlaylist, renamePlaylist } from '../src/spotify/api';
+import { addToPlaylist, play, removeFromPlaylist, renamePlaylist } from '../src/spotify/api';
 import type { PlaybackState, Playlist } from '../src/spotify/types';
 import { write } from '../src/storage';
-import { json, seedTokens, stubFetch } from './helpers';
+import { empty, json, seedTokens, stubFetch } from './helpers';
 
 const playlist = (id: string, owner: string): Playlist => ({ id, name: `Town: ${id}`, uri: `spotify:playlist:${id}`, images: null, owner: { id: owner } });
 const byId = new Map([
@@ -87,6 +87,23 @@ describe('skip and remove', () => {
       scope: 'streaming playlist-modify-private playlist-modify-public',
     });
     expect(canWritePlaylists()).toBe(true);
+  });
+});
+
+describe('play request', () => {
+  it('starts at a track by URI when given one, else at a position', async () => {
+    seedTokens();
+    const bodies: unknown[] = [];
+    stubFetch((_url, init) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return empty(204);
+    });
+    await play('d1', { contextUri: 'spotify:playlist:p', offsetUri: 'spotify:track:T7' });
+    await play('d1', { contextUri: 'spotify:playlist:p', offsetPosition: 3 });
+    expect(bodies).toEqual([
+      { context_uri: 'spotify:playlist:p', offset: { uri: 'spotify:track:T7' } },
+      { context_uri: 'spotify:playlist:p', offset: { position: 3 } },
+    ]);
   });
 });
 

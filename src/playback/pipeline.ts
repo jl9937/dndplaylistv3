@@ -40,8 +40,11 @@ export interface PlaylistRef {
   id: string;
   /** Track count, for the random start (D14). */
   total?: number;
-  /** Start at this track instead of a random one (Studio's Play). Shuffle still follows. */
-  startAt?: number;
+  /**
+   * Start at this track (its Spotify ID) instead of a random one: Studio's Play. By ID, not
+   * position: positions shift whenever a track is removed. Shuffle still follows.
+   */
+  startTrack?: string;
 }
 
 class Superseded extends Error {}
@@ -206,6 +209,12 @@ export function createPipeline(opts: PipelineOptions = {}) {
         await device.sendPlay(id, req, run.signal);
         return { id, req };
       } catch (e) {
+        // A chosen track (Studio's Play) that Spotify refuses: say so, rather than quietly
+        // playing a different one.
+        if (e instanceof SpotifyError && e.kind === 'restriction' && req.offsetUri) {
+          log('pipeline', `#${run.mine} refused to start at the chosen track`);
+          throw new SpotifyError('restriction', e.status, 'Spotify won’t start at that track. It may be unavailable here.', e.spotifyMessage, e.reason);
+        }
         // "Restriction violated" with a random start usually means that track can't play
         // (a local file, or unavailable here). Retry once from Spotify's own start, still shuffled.
         if (e instanceof SpotifyError && e.kind === 'restriction' && req.offsetPosition !== undefined) {
@@ -243,9 +252,11 @@ export function createPipeline(opts: PipelineOptions = {}) {
       await fader.fadeOut(device, id, run.signal, () => step('Fading out…'));
 
       const offsetPosition =
-        playlist.startAt ?? (playlist.total && playlist.total > 0 ? Math.floor(random() * playlist.total) : undefined);
-      let req: api.PlayRequest = { contextUri: playlistUri(playlistId), offsetPosition };
-      step(offsetPosition === undefined ? 'Starting…' : `Starting at track ${offsetPosition + 1}…`);
+        !playlist.startTrack && playlist.total && playlist.total > 0 ? Math.floor(random() * playlist.total) : undefined;
+      let req: api.PlayRequest = playlist.startTrack
+        ? { contextUri: playlistUri(playlistId), offsetUri: `spotify:track:${playlist.startTrack}` }
+        : { contextUri: playlistUri(playlistId), offsetPosition };
+      step(playlist.startTrack ? 'Starting at the chosen track…' : offsetPosition === undefined ? 'Starting…' : `Starting at track ${offsetPosition + 1}…`);
       ({ id, req } = await sendWithRetry(device, id, req, run, step));
       accepted = true;
 

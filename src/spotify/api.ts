@@ -90,11 +90,14 @@ export interface PlayRequest {
   contextUri: string;
   /** Zero-based track index to start from (D14). Omitted when the track count is unknown. */
   offsetPosition?: number;
+  /** Start at this track (`spotify:track:…`) instead: Studio's Play. Can't go stale, unlike a position. */
+  offsetUri?: string;
 }
 
 export async function play(deviceId: string, req: PlayRequest, opts: Opts = {}): Promise<void> {
   const body: Record<string, unknown> = { context_uri: req.contextUri };
-  if (req.offsetPosition !== undefined) body.offset = { position: req.offsetPosition };
+  if (req.offsetUri) body.offset = { uri: req.offsetUri };
+  else if (req.offsetPosition !== undefined) body.offset = { position: req.offsetPosition };
   await request('PUT', `/me/player/play?${q(deviceId)}`, { ...opts, body });
 }
 

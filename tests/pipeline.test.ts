@@ -117,12 +117,23 @@ describe('play pipeline', () => {
     }
   });
 
-  it('starts at a chosen track instead of a random one (Studio’s Play)', async () => {
+  it('starts at a chosen track by its ID, not a position that may have shifted (Studio’s Play)', async () => {
     const { device, fake } = fakeDevice();
-    const p = createPipeline({ random: () => 0.9 }).press({ id: 'PL1', total: 50, startAt: 7 }, device);
+    const p = createPipeline({ random: () => 0.9 }).press({ id: 'PL1', total: 50, startTrack: 'T7' }, device);
     await vi.advanceTimersByTimeAsync(3_000);
     await p;
-    expect(fake.plays[0]).toEqual({ contextUri: 'spotify:playlist:PL1', offsetPosition: 7 });
+    expect(fake.plays[0]).toEqual({ contextUri: 'spotify:playlist:PL1', offsetUri: 'spotify:track:T7' });
+  });
+
+  it('says so when Spotify refuses the chosen track, rather than playing a different one', async () => {
+    const { device } = fakeDevice();
+    device.sendPlay = vi.fn(async () => {
+      throw new SpotifyError('restriction', 403, 'Spotify refused: Restriction violated');
+    });
+    const p = createPipeline().press({ id: 'PL1', total: 50, startTrack: 'T7' }, device);
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(await p).toMatchObject({ status: 'failed', reason: expect.stringContaining('won’t start at that track') });
+    expect(device.sendPlay).toHaveBeenCalledOnce();
   });
 
   it('sends no offset when the track count is unknown', async () => {

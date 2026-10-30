@@ -125,8 +125,8 @@ function Main({ onShowLog }: { onShowLog: () => void }) {
     }
   };
   /** Studio's Play: the playlist from that track, so the music carries on in the same mood. */
-  const playAt = (p: Playlist, position: number) => {
-    if (!playback.play({ id: p.id, total: trackCount(p), startAt: position }, pref)) {
+  const playAt = (p: Playlist, trackId: string) => {
+    if (!playback.play({ id: p.id, total: trackCount(p), startTrack: trackId }, pref)) {
       setNotice('Choose where the music plays first.');
       chooseDevice();
     }

@@ -58,6 +58,7 @@ As of v1.0:
 - **One user:** the owner lock (D35) logs out any other Spotify account; there's no alert. Spotify's development mode also limits the app to accounts added in the developer dashboard.
 - **Accepted security risks** (D36): Spotify's player script runs in the app's origin without a fixed fingerprint, and ReccoBeats sees which track IDs are in your playlists.
 - **Browsers:** made for Chrome or Edge on a laptop (D8, D10). Float needs Chrome or Edge; Firefox and Safari are best effort; the app UI isn't designed for phones.
+- **Volume normalisation** isn't done by the app: Spotify does it on the device that plays. In the desktop app, **Settings → Audio Quality → Normalize volume** (Volume level: Normal); on a phone, under **Playback**. It can't be set through Spotify Connect, and **This browser** (the web player) has no such setting.
 - **Board tiles** still show playlist covers; the Library uses tag-coloured squares (D34).
 
 ## Local development

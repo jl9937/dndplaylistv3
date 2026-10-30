@@ -37,7 +37,7 @@ export function Studio({
   byId: Map<string, Playlist>;
   now: NowPlaying;
   /** Play a playlist from a track. Called inside the click. */
-  onPlayAt: (p: Playlist, position: number) => void;
+  onPlayAt: (p: Playlist, trackId: string) => void;
 }) {
   const state = useOutlierScan();
   const [kept, setKept] = usePref<string[]>('prefs.outliersKept', []);
@@ -233,7 +233,7 @@ export function Studio({
                                 <button onClick={() => undo(p, o, row.positions!)}>Try again</button>
                               ) : (
                                 <>
-                                  <button onClick={() => playlist && onPlayAt(playlist, o.track.position)} disabled={!playlist}>
+                                  <button onClick={() => playlist && onPlayAt(playlist, o.track.id)} disabled={!playlist}>
                                     <span aria-hidden>▶</span> Play
                                   </button>
                                   <button className="danger-outline" onClick={() => remove(p, o)}>

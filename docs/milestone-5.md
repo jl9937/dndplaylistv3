@@ -55,7 +55,7 @@ src/ui/TagPicker.tsx      the picker under a Library card, and the rename line w
 - **Removing** reads the playlist first to find the track's position (counting local files and episodes, as Spotify does), then sends `DELETE /playlists/{id}/items` with `{ items: [{ uri }] }`.
 - **Outliers:** distances in z-units over the whole scanned library. A track is an outlier when its distance from its playlist's centre (leaving itself out) is more than 3 robust spreads (MAD, at least 0.25) above the playlist's median distance.
 - **Suggestions** score each playlist: tracks sharing a composer (artist ID) and tracks from the same album, each divided by the playlist's size + 4 (so tiny playlists don't win on one match), plus how close the track sounds to the playlist's centre (exp(−d²/8) in z-units). Weights are chosen from the measurement.
-- **Play** starts the playlist at the track's position, then shuffles on (`PlaylistRef.startAt`).
+- **Play** starts the playlist at the track itself (`offset: { uri }`, `PlaylistRef.startTrack`), then shuffles on. Not by position: positions shift whenever a track is removed, which once made Play start the wrong track. If Spotify refuses that track, the press fails and says why, rather than playing another one.
 - **Renaming** sends `PUT /playlists/{id}` with `{ name }`, then updates the cached library at once (`renameLocally`).
 - **Undo** sends `POST /playlists/{id}/items` with `{ uris, position }`, with no automatic retry on a server error: if the first attempt landed, a retry would add the track twice.
 
